@@ -11,9 +11,13 @@ namespace Candlewick
     /// <summary>Owns the run: game state, the dungeon, every live entity, and the per-frame update order.</summary>
     public class GameManager : MonoBehaviour
     {
-        public const int TotalSouls = 12, TotalCandles = 7;
-        public const float NightSeconds = 300f;
-        const int MaxGhosts = 5, MapSize = 2;
+        // The working week, Monday to Friday. Each day is bigger, shorter on time per soul and more dangerous.
+        public const int DaysInWeek = 5;
+        static readonly int[] SoulsByDay = { 6, 8, 10, 12, 14 };
+        static readonly int[] CandlesByDay = { 7, 7, 6, 6, 5 };
+        static readonly float[] SecondsByDay = { 180f, 210f, 240f, 270f, 300f };
+        const int MaxGhosts = 5;
+        const float ShadowClearRange = 6f; // A candle can only be lit with no enemy this close to it.
         const float DawnRushSeconds = 6f; // How long the sun takes to rise once no souls are left.
         const float DawnStarts = 0.75f; // The fraction of the night after which the sky begins to lighten.
         const float LightCost = 15f, GatherCost = 5f, LightPerSoul = 10f, ReviveFraction = 0.45f, FirstGhostDelay = 5f, SecondsPerExtraGhost = 45f;
@@ -30,10 +34,23 @@ namespace Candlewick
         public readonly List<Altar> Altars = new List<Altar>();
         public readonly List<Soul> Souls = new List<Soul>();
         public int Rescued { get; private set; }
+        public int RescuedThisWeek { get; private set; }
+        public int Day { get; private set; } = 1;
+        public int SoulsToday => SoulsByDay[Day - 1];
+        public int CandlesToday => CandlesByDay[Day - 1];
+        public static int SoulsInWeek
+        {
+            get
+            {
+                int total = 0;
+                foreach (int souls in SoulsByDay) total += souls;
+                return total;
+            }
+        }
         public int LostSouls { get; private set; }
         public float NightLeft { get; private set; }
 
-        public int Depth => 1;
+        public int Depth => Day;
         public int Kills;
         public int LitThisNight { get; private set; }
         public int TotalSaved { get; private set; }
@@ -98,7 +115,7 @@ namespace Candlewick
         // Night holds until late, then the sky warms and the world slowly becomes visible.
         void UpdateDawn()
         {
-            float night = 1f - NightLeft / NightSeconds;
+            float night = 1f - NightLeft / SecondsByDay[Day - 1];
             float dawn = Mathf.Clamp01((night - DawnStarts) / (1f - DawnStarts));
             Map.SetSkyTint(Color.Lerp(DungeonMap.NightSky, DawnSky, dawn));
             if (globalLight == null) return;
@@ -111,7 +128,7 @@ namespace Candlewick
             ClearWorld();
             WorldRoot = new GameObject("World").transform;
             Particles = new Particles(WorldRoot);
-            Map = new DungeonMap(MapSize);
+            Map = new DungeonMap(Day);
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
             foreach (var spot in Map.DoorSpots) doors.Add(new RoomDoor(this, spot));
@@ -129,20 +146,22 @@ namespace Candlewick
                 free.Add(room);
             }
 
-            for (int i = 0; i < TotalCandles; i++)
+            for (int i = 0; i < CandlesToday; i++)
             {
                 var room = TakeRandom(free);
                 Altars.Add(new Altar(this, room, room.Stand + Vector2.up * 0.3f));
-                room.WavesLeft = 2;
+                room.WavesLeft = 1 + Mathf.Min(1 + Day / 2, 3);
             }
-            for (int i = 0; i < TotalSouls; i++)
+            for (int i = 0; i < SoulsToday; i++)
             {
                 var room = TakeRandom(free);
                 Souls.Add(new Soul(this, room.Stand + Vector2.up * 0.4f));
                 room.WavesLeft = Mathf.Max(room.WavesLeft, 1);
             }
 
-            NightLeft = NightSeconds;
+            Rescued = 0;
+            LostSouls = 0;
+            NightLeft = SecondsByDay[Day - 1];
             dawnRushRate = 0f;
             UpdateDawn();
 
@@ -211,7 +230,8 @@ namespace Candlewick
             if (kb == null) return;
             bool confirm = kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame;
             if (!confirm) return;
-            if (State == GameState.Title || State == GameState.GameOver || State == GameState.Sunrise) StartRun();
+            if (State == GameState.Title || State == GameState.GameOver) StartRun();
+            else if (State == GameState.Sunrise) AfterSunrise();
         }
 
         void TickIntro(float dt)
@@ -223,6 +243,7 @@ namespace Candlewick
             Particles.Tick(dt);
             if (!intro.Tick(dt)) return;
             intro = null;
+            hud.HidePanels();
             Player.SetPresence(1f);
             State = GameState.Playing;
             hud.Toast(Loc.T("Find the lost souls before sunrise", "Знайди заблукані душі до світанку"));
@@ -411,6 +432,15 @@ namespace Candlewick
             return false;
         }
 
+        // Only enemies that can actually reach the candle count, not ones behind a wall or a floor.
+        bool ShadowsNear(Vector2 at)
+        {
+            foreach (var enemy in Enemies)
+                if (!enemy.Dead && enemy.Targetable && Vector2.Distance(enemy.Pos, at) < ShadowClearRange && Map.LineOfSight(enemy.Pos, at))
+                    return true;
+            return false;
+        }
+
         /// <summary>What the prompt should say, or null when no unlit candle is in reach.</summary>
         public string InteractPrompt()
         {
@@ -423,7 +453,7 @@ namespace Candlewick
             }
             var altar = NearestUnlitAltar(Player.Pos);
             if (altar == null || Vector2.Distance(altar.Pos, Player.Pos) > Altar.InteractRange) return null;
-            if (!altar.Room.Cleared) return Loc.T("The shadows smother this wick. Clear the room first", "Тіні душать цей гніт. Спершу очисти кімнату");
+            if (ShadowsNear(altar.Pos)) return Loc.T("Shadows are smothering this wick. Drive them away", "Тіні душать цей гніт. Прожени їх");
             if (Player.Wax <= LightCost) return Loc.T("Not enough light to share", "Замало світла, щоб поділитися");
             return Loc.T("[E] Light this candle (-15 light)", "[E] Запалити цю свічку (-15 світла)");
         }
@@ -458,13 +488,14 @@ namespace Candlewick
             }
             var altar = NearestUnlitAltar(Player.Pos);
             if (altar == null || Vector2.Distance(altar.Pos, Player.Pos) > Altar.InteractRange) return;
-            if (!altar.Room.Cleared || Player.Wax <= LightCost)
+            if (ShadowsNear(altar.Pos) || Player.Wax <= LightCost)
             {
                 Sound.Deny();
                 return;
             }
             Player.ChangeWax(-LightCost);
             altar.Light();
+            altar.Room.WavesLeft = 0; // The room is safe now: no more waves come to it.
             LitThisNight++;
             TotalSaved++;
             Sound.Light();
@@ -504,6 +535,7 @@ namespace Candlewick
         {
             soul.Save();
             Rescued++;
+            RescuedThisWeek++;
             Player.ChangeWax(LightPerSoul);
             Sound.Light();
             hud.Toast(Loc.T("A soul is free", "Душа вільна"));
@@ -636,12 +668,32 @@ namespace Candlewick
             Buffs = new BuffSet();
             Kills = 0;
             TotalSaved = 0;
-            Rescued = 0;
-            LostSouls = 0;
+            Day = 1;
+            RescuedThisWeek = 0;
             SurvivalTime = 0f;
             Player = null;
+            BeginDay();
+        }
+
+        /// <summary>The button on the sunrise screen: on to the next day, or a new week after Friday.</summary>
+        public void AfterSunrise()
+        {
+            if (State != GameState.Sunrise) return;
+            if (Day >= DaysInWeek)
+            {
+                StartRun();
+                return;
+            }
+            Day++;
+            BeginDay();
+            Player.Wax = Player.MaxWax; // Each day starts with a full cape; blessings carry over.
+        }
+
+        void BeginDay()
+        {
             BuildNight();
             hud.HidePanels();
+            hud.ShowDayCard();
             intro = new SunrayIntro(this, Map.StartWindow, Player.Pos);
             State = GameState.Intro;
         }

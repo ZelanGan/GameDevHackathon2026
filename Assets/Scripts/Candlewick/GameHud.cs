@@ -127,12 +127,12 @@ namespace Candlewick
             waxLabel.color = fraction < 0.25f ? Art.Blood : TextColor;
             statLabel.text = Loc.T("Damage", "Шкода") + $" x{player.DamageMultiplier:0.0}   " + Loc.T("Speed", "Швидкість") + $" x{player.SpeedMultiplier:0.0}";
 
-            candlesLabel.text = Loc.T("Until sunrise", "До світанку") + $": {FormatTime(game.NightLeft)}";
+            candlesLabel.text = DayName(game.Day) + "   " + Loc.T("until sunrise", "до світанку") + $": {FormatTime(game.NightLeft)}";
             candlesLabel.color = game.NightLeft < 60f ? new Color(1f, 0.62f, 0.4f) : TextColor;
-            rescueLabel.text = Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}"
+            rescueLabel.text = Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{game.SoulsToday}"
                 + (game.FollowerCount > 0 ? "   " + Loc.T("With you", "З тобою") + $": {game.FollowerCount}" : "");
             int rekindles = game.RekindlesLeft();
-            timeLabel.text = Loc.T("Candles", "Свічки") + $": {game.LitThisNight}/{GameManager.TotalCandles}"
+            timeLabel.text = Loc.T("Candles", "Свічки") + $": {game.LitThisNight}/{game.CandlesToday}"
                 + (rekindles > 0 ? "\n" + Loc.T("Rekindles", "Відродження") + $": {rekindles}" : "");
 
             if (player.SnuffedFor > 0f) { modeLabel.text = Loc.T("SNUFFED", "ПРИГАШЕНО"); modeLabel.color = new Color(0.72f, 0.5f, 1f); }
@@ -207,33 +207,55 @@ namespace Candlewick
             screen?.Invoke();
         }
 
+        static string DayName(int day)
+        {
+            switch (day)
+            {
+                case 1: return Loc.T("Monday", "Понеділок");
+                case 2: return Loc.T("Tuesday", "Вівторок");
+                case 3: return Loc.T("Wednesday", "Середа");
+                case 4: return Loc.T("Thursday", "Четвер");
+                default: return Loc.T("Friday", "П'ятниця");
+            }
+        }
+
+        /// <summary>The day's name over the intro, without a background so the ray stays visible.</summary>
+        public void ShowDayCard()
+        {
+            redraw = ShowDayCard;
+            var card = Rect("DayCard", panelRoot);
+            Stretch(card);
+            Label(card, DayName(game.Day), 84, TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0f, -110f), new Vector2(1400f, 120f)).color = Art.Flame;
+            Label(card, Loc.T($"Day {game.Day} of {GameManager.DaysInWeek}.  Souls to save: {game.SoulsToday}", $"День {game.Day} з {GameManager.DaysInWeek}.  Душ урятувати: {game.SoulsToday}"), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(1400f, 60f)).color = TextColor;
+        }
+
         public void ShowTitle()
         {
             redraw = ShowTitle;
             var panel = Panel(1f);
             Label(panel, "CANDLEWICK", 118, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 330f), new Vector2(1400f, 150f)).color = Art.Flame;
-            Label(panel, Loc.T("You are the last ray of the sunset. Before sunrise, save the lost souls of the students.", "Ти останній промінь заходу. Поки не зійшло сонце, врятуй заблукані душі студентів."), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 235f), new Vector2(1200f, 60f)).color = Muted;
+            Label(panel, Loc.T("You are the last ray of the sunset. Over five working days, save the lost souls of the students.", "Ти останній промінь заходу. За п'ять робочих днів урятуй заблукані душі студентів."), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 235f), new Vector2(1200f, 60f)).color = Muted;
             AddButton(panel, Loc.T("Start Game", "Почати гру"), new Vector2(0f, 120f), new Vector2(380f, 86f), game.StartRun);
 
             string controls = Loc.T(
                 "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Fire\n" +
                 "<b>Right Click / Shift</b>  Toggle Flare: burns 3 light/s for speed, reach and a wide flame\n" +
                 "<b>Q</b>  Toggle Dim: barely fades, but you are slow, weak and half blind\n" +
-                "<b>E</b>  Reach out to a soul (5 light) or light a candle (15 light, once its room is clear)\n\n" +
+                "<b>E</b>  Reach out to a soul (5 light) or light a candle (15 light, when no shadows are near it)\n\n" +
                 "Find souls with the pale arrow. They follow you, and are saved when you bring them to a lit candle.\n" +
                 "Candles are checkpoints: they restore your light, grant a blessing and rekindle you once if you go out.\n" +
                 "Ghosts pass through walls, take your souls and can't be killed: fire only scatters them, and they fear candlelight.\n" +
                 "The more light you have, the harder you hit. The less you have, the faster you run. Pits cost 15 light.\n" +
-                "At sunrise the night ends: souls still with you are saved, the rest stay lost.",
+                "At sunrise the day ends: souls still with you are saved, the rest stay lost. Each day is harder than the last.",
                 "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Вогонь\n" +
                 "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 світла/с за швидкість, дальність і широке полум'я\n" +
                 "<b>Q</b>  Приглушений режим: майже не згасаєш, але ти повільний, слабкий і погано бачиш\n" +
-                "<b>E</b>  Простягнути руку душі (5 світла) або запалити свічку (15 світла, коли кімнату очищено)\n\n" +
+                "<b>E</b>  Простягнути руку душі (5 світла) або запалити свічку (15 світла, коли поруч немає тіней)\n\n" +
                 "Шукай душі за блідою стрілкою. Вони йдуть за тобою й рятуються, коли ти доводиш їх до запаленої свічки.\n" +
                 "Свічки це чекпоінти: відновлюють світло, дають благословення й один раз запалюють тебе знову.\n" +
                 "Привиди проходять крізь стіни, забирають душі, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони бояться.\n" +
                 "Що більше світла, то сильніше ти б'єш. Що менше, то швидше бігаєш. Яма коштує 15 світла.\n" +
-                "Зі сходом сонця ніч закінчується: душі поруч із тобою рятуються, решта лишається заблуканими.");
+                "Зі сходом сонця день закінчується: душі поруч із тобою рятуються, решта лишається заблуканими. Кожен день важчий за попередній.");
             var help = Label(panel, controls, 28, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(1800f, 400f));
             help.supportRichText = true;
             help.color = TextColor;
@@ -267,16 +289,24 @@ namespace Candlewick
             HidePanels();
             redraw = ShowSunrise;
             var panel = Panel(0.72f);
-            string ending = game.Rescued == GameManager.TotalSouls
-                ? Loc.T("Every soul saw the sun", "Кожна душа побачила сонце")
-                : game.Rescued == 0
-                    ? Loc.T("The sun rose on empty halls", "Сонце зійшло над порожніми коридорами")
-                    : Loc.T("The sun has risen", "Сонце зійшло");
+            bool friday = game.Day >= GameManager.DaysInWeek;
+            string ending;
+            if (friday)
+                ending = game.RescuedThisWeek == GameManager.SoulsInWeek
+                    ? Loc.T("Every soul saw the sun", "Кожна душа побачила сонце")
+                    : game.RescuedThisWeek == 0
+                        ? Loc.T("The week ended in empty halls", "Тиждень скінчився в порожніх коридорах")
+                        : Loc.T("The working week is over", "Робочий тиждень закінчено");
+            else
+                ending = DayName(game.Day) + Loc.T(" is over", ": день закінчено");
             Label(panel, ending, 78, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1600f, 110f)).color = new Color(1f, 0.78f, 0.5f);
-            Label(panel, Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}", 48, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
+            Label(panel, Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{game.SoulsToday}", 48, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
             Label(panel, Loc.T("Taken by ghosts", "Забрано привидами") + $": {game.LostSouls}", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(1000f, 50f)).color = Muted;
-            Label(panel, Loc.T("Candles lit", "Запалено свічок") + $": {game.LitThisNight}/{GameManager.TotalCandles}", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
-            AddButton(panel, Loc.T("Another night  [Enter]", "Ще одна ніч  [Enter]"), new Vector2(0f, -130f), new Vector2(500f, 86f), game.StartRun);
+            Label(panel, Loc.T("This week", "За тиждень") + $": {game.RescuedThisWeek}/{GameManager.SoulsInWeek}", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
+            string next = friday
+                ? Loc.T("New week  [Enter]", "Новий тиждень  [Enter]")
+                : Loc.T("Next: ", "Далі: ") + DayName(game.Day + 1) + "  [Enter]";
+            AddButton(panel, next, new Vector2(0f, -130f), new Vector2(560f, 86f), game.AfterSunrise);
         }
 
         public void ShowGameOver()
@@ -285,9 +315,9 @@ namespace Candlewick
             redraw = ShowGameOver;
             var panel = Panel(0.9f);
             Label(panel, Loc.T("The last ray went out", "Останній промінь згас"), 82, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1400f, 110f)).color = Art.Blood;
-            Label(panel, Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
+            Label(panel, Loc.T("Souls saved this week", "Врятовано душ за тиждень") + $": {game.RescuedThisWeek}/{GameManager.SoulsInWeek}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
             Label(panel, Loc.T("Survived", "Протримався") + $": {FormatTime(game.SurvivalTime)}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(1000f, 60f)).color = TextColor;
-            Label(panel, Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
+            Label(panel, DayName(game.Day) + "   " + Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
             AddButton(panel, Loc.T("Try Again  [Enter]", "Спробувати ще  [Enter]"), new Vector2(0f, -130f), new Vector2(440f, 86f), game.StartRun);
         }
 

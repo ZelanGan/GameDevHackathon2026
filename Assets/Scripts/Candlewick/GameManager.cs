@@ -94,7 +94,7 @@ namespace Candlewick
             ClearWorld();
             WorldRoot = new GameObject("World").transform;
             Particles = new Particles(WorldRoot);
-            Map = new DungeonMap();
+            Map = new DungeonMap(Depth);
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
 
@@ -110,7 +110,8 @@ namespace Candlewick
 
             // The gate takes the room farthest from the start, and the altars the next farthest.
             order.RemoveAt(0);
-            order.Sort((a, b) => Vector2.Distance(b.Center, start.Center).CompareTo(Vector2.Distance(a.Center, start.Center)));
+            Map.UpdateFlow(start.Center);
+            order.Sort((a, b) => Map.WalkDistance(b.Center).CompareTo(Map.WalkDistance(a.Center)));
             foreach (var room in order) room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
             var gateRoom = order[0];
             CurrentGate = new Gate(this, new Vector2(gateRoom.Center.x, gateRoom.Rect.yMax - 1.5f));

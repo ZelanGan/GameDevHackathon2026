@@ -19,7 +19,7 @@ namespace Candlewick
     /// <summary>Room-and-corridor layout, wall collision, line of sight and the chase flow field.</summary>
     public class DungeonMap
     {
-        const int GridSize = 3, CellSize = 19, Border = 2;
+        const int Border = 2, MinLeaf = 14, MaxLeaf = 26, MinRooms = 8, MinRoomSize = 8, MaxRoomSize = 20;
         public readonly int Width, Height;
         public readonly List<Room> Rooms = new List<Room>();
         readonly bool[] floor;
@@ -27,73 +27,172 @@ namespace Candlewick
         readonly Queue<int> queue = new Queue<int>();
         Vector2Int flowOrigin = new Vector2Int(-1, -1);
 
-        public DungeonMap()
+        /// <summary>Generates a new castle floor; deeper floors are larger.</summary>
+        public DungeonMap(int depth)
         {
-            Width = Height = GridSize * CellSize + Border * 2;
+            Width = 58 + depth * 8 + Random.Range(0, 9);
+            Height = 46 + depth * 6 + Random.Range(0, 9);
             floor = new bool[Width * Height];
             dist = new int[Width * Height];
-            Generate();
+            do Generate();
+            while (Rooms.Count < MinRooms || !AllRoomsReachable());
         }
 
         void Generate()
         {
-            for (int gy = 0; gy < GridSize; gy++)
-                for (int gx = 0; gx < GridSize; gx++)
-                {
-                    int w = Random.Range(10, CellSize - 3), h = Random.Range(9, CellSize - 3);
-                    int x = Border + gx * CellSize + Random.Range(1, CellSize - w - 1);
-                    int y = Border + gy * CellSize + Random.Range(1, CellSize - h - 1);
-                    var room = new Room { Rect = new RectInt(x, y, w, h) };
-                    Rooms.Add(room);
-                    Carve(room.Rect);
-                }
+            System.Array.Clear(floor, 0, floor.Length);
+            Rooms.Clear();
+            Split(new RectInt(Border, Border, Width - Border * 2, Height - Border * 2));
 
-            // Random spanning tree over the 3x3 grid, plus two loops so the player is never cornered.
-            var connected = new HashSet<int> { Random.Range(0, Rooms.Count) };
-            var edges = new List<Vector2Int>();
-            for (int i = 0; i < Rooms.Count; i++)
+            // Sibling links alone make a tree; a few extra corridors add loops so the player is never cornered.
+            int loops = Random.Range(2, 2 + Rooms.Count / 3);
+            for (int i = 0; i < loops; i++)
             {
-                if (i % GridSize != GridSize - 1) edges.Add(new Vector2Int(i, i + 1));
-                if (i + GridSize < Rooms.Count) edges.Add(new Vector2Int(i, i + GridSize));
-            }
-            Shuffle(edges);
-            var unused = new List<Vector2Int>();
-            bool grew = true;
-            var pending = new List<Vector2Int>(edges);
-            while (grew)
-            {
-                grew = false;
-                for (int i = pending.Count - 1; i >= 0; i--)
+                var room = Rooms[Random.Range(0, Rooms.Count)];
+                Room partner = null;
+                float best = float.MaxValue;
+                foreach (var other in Rooms)
                 {
-                    var e = pending[i];
-                    bool a = connected.Contains(e.x), b = connected.Contains(e.y);
-                    if (a == b) continue;
-                    Corridor(Rooms[e.x], Rooms[e.y]);
-                    connected.Add(e.x);
-                    connected.Add(e.y);
-                    pending.RemoveAt(i);
-                    grew = true;
+                    if (other == room) continue;
+                    float d = Vector2.Distance(room.Center, other.Center) * Random.Range(1f, 1.8f);
+                    if (d >= best) continue;
+                    best = d;
+                    partner = other;
                 }
+                Corridor(room, partner);
             }
-            unused.AddRange(pending);
-            for (int i = 0; i < Mathf.Min(2, unused.Count); i++) Corridor(Rooms[unused[i].x], Rooms[unused[i].y]);
         }
 
-        void Carve(RectInt r)
+        // Binary space partition: each area becomes a room or splits in two, and the halves get linked.
+        List<Room> Split(RectInt area)
+        {
+            bool canSplitX = area.width >= MinLeaf * 2, canSplitY = area.height >= MinLeaf * 2;
+            bool mustSplit = area.width > MaxLeaf || area.height > MaxLeaf;
+            if ((!canSplitX && !canSplitY) || (!mustSplit && Random.value < 0.15f))
+                return new List<Room> { MakeRoom(area) };
+
+            bool splitX = canSplitX && (!canSplitY || (area.width == area.height ? Random.value < 0.5f : area.width > area.height));
+            List<Room> a, b;
+            if (splitX)
+            {
+                int cut = Random.Range(MinLeaf, area.width - MinLeaf + 1);
+                a = Split(new RectInt(area.xMin, area.yMin, cut, area.height));
+                b = Split(new RectInt(area.xMin + cut, area.yMin, area.width - cut, area.height));
+            }
+            else
+            {
+                int cut = Random.Range(MinLeaf, area.height - MinLeaf + 1);
+                a = Split(new RectInt(area.xMin, area.yMin, area.width, cut));
+                b = Split(new RectInt(area.xMin, area.yMin + cut, area.width, area.height - cut));
+            }
+
+            LinkClosest(a, b);
+            a.AddRange(b);
+            return a;
+        }
+
+        Room MakeRoom(RectInt leaf)
+        {
+            int w = Random.Range(Mathf.Max(MinRoomSize, leaf.width * 6 / 10), Mathf.Min(leaf.width - 1, MaxRoomSize + 1));
+            int h = Random.Range(Mathf.Max(MinRoomSize, leaf.height * 6 / 10), Mathf.Min(leaf.height - 1, MaxRoomSize + 1));
+            int x = Random.Range(leaf.xMin + 1, leaf.xMax - w);
+            int y = Random.Range(leaf.yMin + 1, leaf.yMax - h);
+            var room = new Room { Rect = new RectInt(x, y, w, h) };
+            Rooms.Add(room);
+            CarveShape(room.Rect);
+            return room;
+        }
+
+        // Every shape keeps the room's center and top middle open: altars and the gate stand there.
+        void CarveShape(RectInt r)
+        {
+            bool roomy = r.width >= 11 && r.height >= 11;
+            switch (Random.Range(0, 5))
+            {
+                case 1: // Notched corners
+                    Carve(r, true);
+                    int notch = Random.Range(2, 4);
+                    Carve(new RectInt(r.xMin, r.yMin, notch, notch), false);
+                    Carve(new RectInt(r.xMax - notch, r.yMin, notch, notch), false);
+                    Carve(new RectInt(r.xMin, r.yMax - notch, notch, notch), false);
+                    Carve(new RectInt(r.xMax - notch, r.yMax - notch, notch, notch), false);
+                    break;
+                case 2 when roomy: // Cross
+                    Carve(new RectInt(r.xMin, r.yMin + r.height / 4, r.width, r.height / 2), true);
+                    Carve(new RectInt(r.xMin + r.width / 4, r.yMin, r.width / 2, r.height), true);
+                    break;
+                case 3: // Round hall
+                    for (int y = r.yMin; y < r.yMax; y++)
+                        for (int x = r.xMin; x < r.xMax; x++)
+                        {
+                            float dx = (x + 0.5f - r.center.x) / (r.width / 2f), dy = (y + 0.5f - r.center.y) / (r.height / 2f);
+                            if (dx * dx + dy * dy <= 1f) floor[y * Width + x] = true;
+                        }
+                    break;
+                case 4 when roomy: // Pillared hall
+                    Carve(r, true);
+                    for (int y = r.yMin + 2; y < r.yMax - 3; y += 3)
+                        for (int x = r.xMin + 2; x < r.xMax - 2; x += 3)
+                            if (Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), r.center) > 3f)
+                                floor[y * Width + x] = false;
+                    break;
+                default:
+                    Carve(r, true);
+                    break;
+            }
+        }
+
+        void Carve(RectInt r, bool open = true)
         {
             for (int y = r.yMin; y < r.yMax; y++)
                 for (int x = r.xMin; x < r.xMax; x++)
-                    floor[y * Width + x] = true;
+                    floor[y * Width + x] = open;
+        }
+
+        void LinkClosest(List<Room> a, List<Room> b)
+        {
+            Room bestA = null, bestB = null;
+            float best = float.MaxValue;
+            foreach (var ra in a)
+                foreach (var rb in b)
+                {
+                    float d = Vector2.Distance(ra.Center, rb.Center);
+                    if (d >= best) continue;
+                    best = d;
+                    bestA = ra;
+                    bestB = rb;
+                }
+            Corridor(bestA, bestB);
         }
 
         void Corridor(Room a, Room b)
         {
             var from = Vector2Int.FloorToInt(a.Center);
             var to = Vector2Int.FloorToInt(b.Center);
+            int width = Random.Range(2, 4);
+            // The bend can fall on either side, so hallways don't all turn the same way.
+            int bendY = Random.value < 0.5f ? from.y : to.y;
+            int bendX = bendY == from.y ? to.x : from.x;
             int minX = Mathf.Min(from.x, to.x), maxX = Mathf.Max(from.x, to.x);
             int minY = Mathf.Min(from.y, to.y), maxY = Mathf.Max(from.y, to.y);
-            Carve(new RectInt(minX - 1, from.y - 1, maxX - minX + 3, 3));
-            Carve(new RectInt(to.x - 1, minY - 1, 3, maxY - minY + 3));
+            Carve(new RectInt(minX - 1, bendY - 1, maxX - minX + width, width));
+            Carve(new RectInt(bendX - 1, minY - 1, width, maxY - minY + width));
+        }
+
+        bool AllRoomsReachable()
+        {
+            flowOrigin = new Vector2Int(-1, -1);
+            UpdateFlow(Rooms[0].Center);
+            foreach (var room in Rooms)
+                if (WalkDistance(room.Center) == int.MaxValue) return false;
+            return true;
+        }
+
+        /// <summary>Steps along the floor from the last flow target; int.MaxValue if unreachable.</summary>
+        public int WalkDistance(Vector2 p)
+        {
+            int x = Mathf.FloorToInt(p.x), y = Mathf.FloorToInt(p.y);
+            return IsFloor(x, y) ? dist[y * Width + x] : int.MaxValue;
         }
 
         public bool IsFloor(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height && floor[y * Width + x];
@@ -192,7 +291,7 @@ namespace Candlewick
             for (int i = 0; i < 30; i++)
             {
                 var p = new Vector2(Random.Range(room.Rect.xMin + 1f, room.Rect.xMax - 1f), Random.Range(room.Rect.yMin + 1f, room.Rect.yMax - 1f));
-                if (Vector2.Distance(p, awayFrom) >= minDist) return p;
+                if (Vector2.Distance(p, awayFrom) >= minDist && !Overlaps(p, 0.8f)) return p;
             }
             return room.Center;
         }
@@ -228,15 +327,6 @@ namespace Candlewick
             var tile = ScriptableObject.CreateInstance<Tile>();
             tile.sprite = sprite;
             return tile;
-        }
-
-        static void Shuffle<T>(List<T> list)
-        {
-            for (int i = list.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (list[i], list[j]) = (list[j], list[i]);
-            }
         }
     }
 }

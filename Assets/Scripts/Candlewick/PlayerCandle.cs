@@ -11,6 +11,7 @@ namespace Candlewick
     {
         public const float Gravity = 28f, JumpSpeed = 14f, Radius = 0.34f, NormalSpeed = 5f;
         const float LightPerFollower = 0.12f;
+        const float NormalFireCost = 2f, FlareFireCost = 5f, DimFireCost = 0.4f, MinFireWax = 3f; // Light per second of firing.
         const float ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
         const float CoyoteTime = 0.1f, JumpBuffer = 0.12f, MaxFallSpeed = 22f, DropThroughTime = 0.25f, PitWaxCost = 15f;
 
@@ -42,6 +43,9 @@ namespace Candlewick
         float verticalSpeed, sinceGrounded, jumpQueued, dropping;
         bool grounded, jumpHeld;
         Vector2 lastSafe, lastPos;
+        const float GutterEnd = 0.9f, SinkEnd = 1.3f, DeathEnd = 2.4f;
+        float deathTime, deathLight;
+        bool lastSparkGone;
         float facing = 1f, stride;
 
         public PlayerCandle(GameManager game, Transform parent, Vector2 pos)
@@ -121,6 +125,14 @@ namespace Candlewick
             }
 
             // Puffs can come faster than the frame rate, so catch up within the frame.
+            // Fire is paid for in light, but it can't put the child out: at the last spark it just stops.
+            if (Wax <= MinFireWax) firing = false;
+            if (firing)
+            {
+                float cost = EffectiveMode == FlameMode.Flare ? FlareFireCost : EffectiveMode == FlameMode.Dim ? DimFireCost : NormalFireCost;
+                Wax = Mathf.Max(Wax - cost * game.Buffs.AttackCostMultiplier * dt, MinFireWax);
+            }
+
             fireCooldown -= dt;
             if (firing)
                 while (fireCooldown <= 0f) Fire();
@@ -353,15 +365,69 @@ namespace Candlewick
         public void GoOut()
         {
             Alive = false;
-            flameSprite.enabled = false;
-            haloSprite.enabled = false;
-            capeSprite.color = CapeSpent;
-            bodySprite.color = new Color(0.4f, 0.38f, 0.42f);
+            deathTime = 0f;
+            deathLight = lightRadius;
             arrowSprite.enabled = false;
             soulArrowSprite.enabled = false;
             crosshair.gameObject.SetActive(false);
             glow.enabled = false;
             streamGlow.enabled = false;
+        }
+
+        /// <summary>
+        /// Plays one frame of the child going out: the light gutters, the cape goes dark, the child sinks
+        /// to its knees and dissolves into embers. Returns true when it has finished.
+        /// </summary>
+        public bool TickDeath(float dt)
+        {
+            deathTime += dt;
+            float gutter = Mathf.Clamp01(deathTime / GutterEnd);
+            float sink = Mathf.SmoothStep(0f, 1f, (deathTime - 0.25f) / (SinkEnd - 0.25f));
+            float fade = Mathf.Clamp01((deathTime - SinkEnd) / (DeathEnd - SinkEnd));
+
+            // A body that dies in mid-air still falls to the floor.
+            verticalSpeed = Mathf.Max(verticalSpeed - Gravity * dt, -MaxFallSpeed);
+            Pos = game.Map.MoveWalker(Pos, new Vector2(0f, verticalSpeed * dt), Radius, false, out bool landed, out bool bumped);
+            if (landed || bumped) verticalSpeed = 0f;
+            root.transform.localPosition = new Vector3(Pos.x, Pos.y, 0f);
+
+            // The flame fights to stay lit, stuttering harder as it runs out.
+            float stutter = Mathf.PerlinNoise(Time.time * 26f, 5.7f);
+            float strength = (1f - gutter) * (0.35f + stutter * 0.9f) + (1f - fade) * 0.12f;
+            glow.pointLightOuterRadius = Mathf.Lerp(deathLight, 1.6f, gutter) * Mathf.Lerp(1f, 0.5f, fade);
+            glow.pointLightInnerRadius = glow.pointLightOuterRadius * 0.2f;
+            glow.intensity = 1.2f * strength * (1f - fade);
+            flame.localScale = Vector3.one * 0.42f * (1f - gutter) * (0.5f + stutter);
+            flameSprite.color = new Color(Art.Core.r, Art.Core.g, Art.Core.b, 1f - gutter);
+            halo.localScale = Vector3.one * Mathf.Lerp(2.4f, 0.6f, gutter);
+            haloSprite.color = new Color(1f, 0.55f, 0.25f, 0.5f * strength * (1f - fade));
+
+            // Sinks to its knees, leaning forward, while the cape falls still and dark.
+            figure.localScale = new Vector3(facing * FigureScale * Mathf.Lerp(1f, 1.12f, sink), FigureScale * Mathf.Lerp(1f, 0.5f, sink), 1f);
+            figure.localPosition = Vector3.zero;
+            figure.localRotation = Quaternion.Euler(0f, 0f, -facing * 14f * sink);
+            cape.localRotation = Quaternion.Euler(0f, 0f, 4f * (1f - sink));
+            var cloak = Color.Lerp(capeSprite.color, CapeSpent, gutter);
+            cloak.a = 1f - fade;
+            capeSprite.color = cloak;
+            bodySprite.color = Color.Lerp(Color.white, new Color(0.42f, 0.4f, 0.45f), sink) * new Color(1f, 1f, 1f, 1f - fade);
+
+            // Embers lift off the body, and then the last of its light rises away.
+            emberTimer -= dt;
+            if (emberTimer <= 0f && deathTime < DeathEnd - 0.2f)
+            {
+                emberTimer = 0.035f;
+                Vector2 from = Pos + new Vector2(Random.Range(-0.45f, 0.45f), Random.Range(-0.3f, 0.5f));
+                var color = Color.Lerp(Art.Flame, new Color(0.35f, 0.33f, 0.4f), Mathf.Clamp01(deathTime / DeathEnd + Random.value * 0.3f));
+                game.Particles.Emit(from, new Vector2(Random.Range(-0.5f, 0.5f), Random.Range(0.8f, 2.4f)), color, Random.Range(0.07f, 0.18f), Random.Range(0.6f, 1.2f));
+            }
+            if (!lastSparkGone && fade > 0.5f)
+            {
+                lastSparkGone = true;
+                game.Sound.Dim();
+                game.Particles.Emit(Pos + Vector2.up * 0.5f, Vector2.up * 2.2f, Art.Core, 0.5f, 1.3f);
+            }
+            return deathTime >= DeathEnd;
         }
 
         public void Snuff(float seconds)

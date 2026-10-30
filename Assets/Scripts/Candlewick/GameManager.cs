@@ -17,7 +17,7 @@ namespace Candlewick
         static readonly int[] CandlesByDay = { 7, 7, 6, 6, 5 };
         static readonly float[] SecondsByDay = { 180f, 210f, 240f, 270f, 300f };
         const int MaxGhosts = 5;
-        const float MenuCameraSize = 13f, PlayCameraSize = 8.5f;
+        const float MenuCameraSize = 13f, PlayCameraSize = 8.5f, DeathCameraSize = 5.5f;
         const float ShadowClearRange = 6f; // A candle can only be lit with no enemy this close to it.
         const float DawnRushSeconds = 6f; // How long the sun takes to rise once no souls are left.
         const float DawnStarts = 0.75f; // The fraction of the night after which the sky begins to lighten.
@@ -73,7 +73,7 @@ namespace Candlewick
         Palette Today => weekPalettes[Day - 1];
         GameHud hud;
         Vector3 camPos;
-        float shake, ambientTimer, dyingTimer, ghostClock;
+        float shake, ambientTimer, ghostClock;
 
         void Awake()
         {
@@ -233,8 +233,9 @@ namespace Candlewick
                     break;
                 case GameState.Dying:
                     Particles.Tick(dt);
-                    dyingTimer -= dt;
-                    if (dyingTimer <= 0f) ShowGameOver();
+                    // The camera closes in on the child as it goes out.
+                    cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, DeathCameraSize, 1f - Mathf.Exp(-dt * 1.4f));
+                    if (Player.TickDeath(dt)) ShowGameOver();
                     break;
                 default:
                     Particles.Tick(dt);
@@ -745,7 +746,6 @@ namespace Candlewick
             Player.Wax = 0f;
             Player.GoOut();
             State = GameState.Dying;
-            dyingTimer = 0.9f;
             Cursor.visible = true;
         }
 

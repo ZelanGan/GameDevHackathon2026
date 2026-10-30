@@ -243,6 +243,90 @@ namespace Candlewick
         }
     }
 
+    /// <summary>
+    /// A small candle locked in a cage. Once freed it floats after the player, brightening the light,
+    /// until it reaches the gate and counts as rescued, or a ghost snuffs it out.
+    /// </summary>
+    public class Captive
+    {
+        public const float FreeRange = 1.9f;
+        const float BodyRadius = 0.22f, FollowSpeed = 5.5f, CatchUpSpeed = 9f, CatchUpDistance = 6f, LostDistance = 24f;
+
+        public enum Status { Caged, Following, Gone }
+
+        public Vector2 Pos { get; private set; }
+        public Status State { get; private set; } = Status.Caged;
+        public readonly Room Room;
+
+        readonly GameManager game;
+        readonly GameObject root;
+        readonly Transform cage;
+        readonly SpriteRenderer flame;
+        float age;
+
+        public Captive(GameManager game, Room room, Vector2 pos)
+        {
+            this.game = game;
+            Room = room;
+            Pos = pos;
+            root = new GameObject("Captive");
+            root.transform.SetParent(game.WorldRoot, false);
+            root.transform.localPosition = pos;
+            var body = Art.Spr("Body", root.transform, Art.Square, Art.Glow, Art.Wax, 9);
+            body.transform.localScale = new Vector3(0.24f, 0.5f, 1f);
+            flame = Art.Spr("Flame", root.transform, Art.Soft, Art.Glow, new Color(0.7f, 0.85f, 1f, 0.8f), 10, 0.45f).GetComponent<SpriteRenderer>();
+            flame.transform.localPosition = new Vector3(0f, 0.38f, 0f);
+
+            cage = new GameObject("Cage").transform;
+            cage.SetParent(root.transform, false);
+            for (int i = -2; i <= 2; i++) Bar(new Vector3(i * 0.32f, 0.2f, 0f), new Vector3(0.06f, 1.5f, 1f));
+            Bar(new Vector3(0f, 0.95f, 0f), new Vector3(1.4f, 0.1f, 1f));
+            Bar(new Vector3(0f, -0.55f, 0f), new Vector3(1.4f, 0.1f, 1f));
+        }
+
+        void Bar(Vector3 position, Vector3 scale)
+        {
+            var bar = Art.Spr("Bar", cage, Art.Square, Art.Glow, new Color(0.55f, 0.52f, 0.62f), 11);
+            bar.transform.localPosition = position;
+            bar.transform.localScale = scale;
+        }
+
+        public void Tick(float dt, int followOrder)
+        {
+            if (State == Status.Gone) return;
+            age += dt;
+            flame.transform.localScale = Vector3.one * (0.42f + 0.08f * Mathf.Sin(age * 11f));
+            if (State == Status.Caged) return;
+
+            var map = game.Map;
+            Vector2 target = game.Player.Pos;
+            float distance = Vector2.Distance(Pos, target);
+            if (distance > LostDistance) Pos = target;
+            else if (distance > 1.1f + followOrder * 0.7f)
+            {
+                Vector2 dir = map.LineOfSight(Pos, target) ? (target - Pos).normalized : map.FlowDir(Pos);
+                Pos = map.Move(Pos, dir * (distance > CatchUpDistance ? CatchUpSpeed : FollowSpeed) * dt, BodyRadius);
+            }
+            root.transform.localPosition = Pos + Vector2.up * Mathf.Sin(age * 3f + followOrder) * 0.08f;
+        }
+
+        public void Free()
+        {
+            State = Status.Following;
+            Object.Destroy(cage.gameObject);
+            flame.color = Art.Core;
+        }
+
+        public void JoinPlayer() => Pos = game.Player.Pos;
+
+        public void Snuff()
+        {
+            State = Status.Gone;
+            game.Particles.Burst(Pos, 18, new Color(0.45f, 0.42f, 0.5f), 3f);
+            Object.Destroy(root);
+        }
+    }
+
     /// <summary>The way out of the current floor. Sealed until enough candles burn.</summary>
     public class Gate
     {

@@ -10,6 +10,7 @@ namespace Candlewick
     public class PlayerCandle
     {
         public const float Gravity = 28f, JumpSpeed = 14f, Radius = 0.34f, NormalSpeed = 5f;
+        const float LightPerFollower = 0.12f;
         const float BodyHeight = 1.15f, ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
         const float CoyoteTime = 0.1f, JumpBuffer = 0.12f, MaxFallSpeed = 22f, DropThroughTime = 0.25f, PitWaxCost = 15f;
 
@@ -22,10 +23,16 @@ namespace Candlewick
 
         public FlameMode EffectiveMode => SnuffedFor > 0f ? FlameMode.Dim : Mode;
 
+        // Wax trades power for speed: a full candle hits hard, a stub runs fast.
+        const float MinDamage = 0.5f, MaxDamage = 1.5f, MaxSpeedBonus = 1.4f;
+        float WaxFraction => Mathf.Clamp01(Wax / MaxWax);
+        public float DamageMultiplier => Mathf.Lerp(MinDamage, MaxDamage, WaxFraction);
+        public float SpeedMultiplier => Mathf.Lerp(MaxSpeedBonus, 1f, WaxFraction);
+
         readonly GameManager game;
         readonly GameObject root;
-        readonly Transform body, wick, flame, halo, aura, arrow, crosshair;
-        readonly SpriteRenderer bodySprite, flameSprite, haloSprite, auraSprite, arrowSprite;
+        readonly Transform body, wick, flame, halo, aura, arrow, captiveArrow, crosshair;
+        readonly SpriteRenderer bodySprite, flameSprite, haloSprite, auraSprite, arrowSprite, captiveArrowSprite;
         readonly Light2D glow, streamGlow;
         float fireCooldown, grace, hurtFlash, emberTimer, healMoteTimer, lightRadius = 8f;
         float verticalSpeed, sinceGrounded, jumpQueued, dropping;
@@ -54,6 +61,8 @@ namespace Candlewick
             auraSprite = aura.GetComponent<SpriteRenderer>();
             arrow = Art.Spr("AltarArrow", parent, Art.Arrow, Art.Glow, Art.Flame, 16, 0.3f).transform;
             arrowSprite = arrow.GetComponent<SpriteRenderer>();
+            captiveArrow = Art.Spr("CaptiveArrow", parent, Art.Arrow, Art.Glow, Color.green, 16, 0.26f).transform;
+            captiveArrowSprite = captiveArrow.GetComponent<SpriteRenderer>();
             crosshair = Art.Spr("Crosshair", parent, Art.Disk, Art.Glow, new Color(1f, 0.85f, 0.5f, 0.9f), 30, 0.16f).transform;
             Art.Spr("Ring", crosshair, Art.Soft, Art.Glow, new Color(1f, 0.5f, 0.15f, 0.55f), 29, 3.2f);
             glow = Art.AddLight(root, new Color(1f, 0.72f, 0.42f), lightRadius, 1.15f);
@@ -90,7 +99,7 @@ namespace Candlewick
                 if (kb.eKey.wasPressedThisFrame) game.Interact();
             }
             float speed = EffectiveMode == FlameMode.Flare ? 7.5f : EffectiveMode == FlameMode.Dim ? 3.4f : NormalSpeed;
-            MoveBody(move * speed, jumpDown, dt);
+            MoveBody(move * speed * SpeedMultiplier, jumpDown, dt);
 
             bool firing = false;
             if (mouse != null)
@@ -180,20 +189,22 @@ namespace Candlewick
             var mode = EffectiveMode;
             float rate = game.Buffs.FireRateMultiplier;
             float reach = game.Buffs.RangeMultiplier;
+            float power = DamageMultiplier;
+            float swell = 0.75f + 0.25f * power; // A fuller candle also breathes a visibly thicker flame.
             Vector2 muzzle = Pos + Aim * 0.45f;
             switch (mode)
             {
                 case FlameMode.Flare:
                     fireCooldown += 0.0125f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-14f, 14f)) * Random.Range(15f, 19f), 2.5f, 1f, 4.2f, 0.65f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-14f, 14f)) * Random.Range(15f, 19f), 2.5f * power, 1f * swell, 4.2f * swell, 0.65f * reach);
                     break;
                 case FlameMode.Dim:
                     fireCooldown += 0.06f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-6f, 6f)) * Random.Range(7f, 9f), 0.4f, 0.45f, 1.5f, 0.45f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-6f, 6f)) * Random.Range(7f, 9f), 0.4f * power, 0.45f * swell, 1.5f * swell, 0.45f * reach);
                     break;
                 default:
                     fireCooldown += 0.02f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-9f, 9f)) * Random.Range(11.5f, 14.5f), 1.1f, 0.7f, 3f, 0.55f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-9f, 9f)) * Random.Range(11.5f, 14.5f), 1.1f * power, 0.7f * swell, 3f * swell, 0.55f * reach);
                     break;
             }
         }
@@ -232,6 +243,7 @@ namespace Candlewick
         {
             var mode = EffectiveMode;
             float targetRadius = mode == FlameMode.Flare ? 14f : mode == FlameMode.Dim ? 3.8f : 8f;
+            targetRadius *= 1f + LightPerFollower * game.FollowerCount;
             lightRadius = Mathf.Lerp(lightRadius, targetRadius, 1f - Mathf.Exp(-dt * 6f));
             float flicker = Mathf.PerlinNoise(Time.time * 9f, 3.1f) * 0.14f + Mathf.PerlinNoise(Time.time * 23f, 8.3f) * 0.06f;
             glow.pointLightOuterRadius = lightRadius * (0.92f + flicker);
@@ -279,6 +291,17 @@ namespace Candlewick
             arrow.position = Pos + dir * 1.2f;
             arrow.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
             arrowSprite.color = game.CurrentGate.IsOpen ? new Color(0.75f, 0.88f, 1f, 0.5f + flicker) : new Color(1f, 0.78f, 0.28f, 0.35f + flicker);
+
+            // A second, greener arrow points at the nearest candle still waiting to be freed.
+            var captive = game.NearestCaged(Pos);
+            captiveArrowSprite.enabled = captive != null && Vector2.Distance(captive.Pos, Pos) > 3f;
+            if (captive != null)
+            {
+                Vector2 toCaptive = (captive.Pos - Pos).normalized;
+                captiveArrow.position = Pos + toCaptive * 1.6f;
+                captiveArrow.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(toCaptive.y, toCaptive.x) * Mathf.Rad2Deg);
+                captiveArrowSprite.color = new Color(0.55f, 1f, 0.65f, 0.35f + flicker);
+            }
         }
 
         public void ChangeWax(float amount)
@@ -305,6 +328,7 @@ namespace Candlewick
             flameSprite.enabled = false;
             haloSprite.enabled = false;
             arrowSprite.enabled = false;
+            captiveArrowSprite.enabled = false;
             crosshair.gameObject.SetActive(false);
             glow.enabled = false;
             streamGlow.enabled = false;

@@ -94,7 +94,7 @@ namespace Candlewick
             ClearWorld();
             WorldRoot = new GameObject("World").transform;
             Particles = new Particles(WorldRoot);
-            Map = new DungeonMap();
+            Map = new DungeonMap(Depth);
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
 
@@ -110,7 +110,8 @@ namespace Candlewick
 
             // The gate takes the room farthest from the start, and the altars the next farthest.
             order.RemoveAt(0);
-            order.Sort((a, b) => Vector2.Distance(b.Center, start.Center).CompareTo(Vector2.Distance(a.Center, start.Center)));
+            Map.UpdateFlow(start.Center);
+            order.Sort((a, b) => Map.WalkDistance(b.Center).CompareTo(Map.WalkDistance(a.Center)));
             foreach (var room in order) room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
             var gateRoom = order[0];
             CurrentGate = new Gate(this, new Vector2(gateRoom.Center.x, gateRoom.Rect.yMax - 1.5f));
@@ -240,7 +241,7 @@ namespace Candlewick
             {
                 here.Entered = true;
                 here.WaveDelay = 0.4f;
-                hud.Toast("Something stirs in the dark");
+                hud.Toast(Loc.T("Something stirs in the dark", "Щось ворушиться в темряві"));
             }
             foreach (var room in Map.Rooms)
             {
@@ -300,7 +301,9 @@ namespace Candlewick
             foreach (var e in Enemies) if (e is Ghost) alive++;
             if (alive >= wanted) return;
             Enemies.Add(new Ghost(this, GhostSpawnPoint()));
-            hud.Toast(alive == 0 ? "A ghost has found you. Run" : "Another ghost joins the hunt");
+            hud.Toast(alive == 0
+                ? Loc.T("A ghost has found you. Run", "Привид знайшов тебе. Тікай")
+                : Loc.T("Another ghost joins the hunt", "До полювання долучився ще один привид"));
         }
 
         public Vector2 GhostSpawnPoint()
@@ -349,14 +352,17 @@ namespace Candlewick
             if (State != GameState.Playing) return null;
             if (Vector2.Distance(CurrentGate.Pos, Player.Pos) <= Gate.InteractRange)
             {
-                if (!CurrentGate.IsOpen) return $"Sealed. Light {CandlesToOpen - LitThisNight} more candle(s) to open it";
-                return Depth >= FloorCount ? "[E] Escape the castle" : "[E] Descend to the next floor";
+                int missing = CandlesToOpen - LitThisNight;
+                if (!CurrentGate.IsOpen) return Loc.T($"Sealed. Candles still needed to open it: {missing}", $"Запечатано. Ще потрібно запалити свічок: {missing}");
+                return Depth >= FloorCount
+                    ? Loc.T("[E] Escape the castle", "[E] Втекти із замку")
+                    : Loc.T("[E] Descend to the next floor", "[E] Спуститися на наступний поверх");
             }
             var altar = NearestUnlitAltar(Player.Pos);
             if (altar == null || Vector2.Distance(altar.Pos, Player.Pos) > Altar.InteractRange) return null;
-            if (!altar.Room.Cleared) return "The shadows smother this wick. Clear the room first";
-            if (Player.Wax <= LightCost) return "Not enough wax to share";
-            return "[E] Share your flame (-15 wax)";
+            if (!altar.Room.Cleared) return Loc.T("The shadows smother this wick. Clear the room first", "Тіні душать цей гніт. Спершу зачисть кімнату");
+            if (Player.Wax <= LightCost) return Loc.T("Not enough wax to share", "Замало воску, щоб поділитися");
+            return Loc.T("[E] Share your flame (-15 wax)", "[E] Поділитися полум'ям (-15 воску)");
         }
 
         /// <summary>Where the player's guide arrow points: the nearest candle, then the open gate.</summary>
@@ -392,7 +398,7 @@ namespace Candlewick
             {
                 CurrentGate.Open();
                 ghostClock += SecondsPerExtraGhost; // Opening the gate wakes another ghost.
-                hud.Toast("The gate is open. Run!");
+                hud.Toast(Loc.T("The gate is open. Run!", "Ворота відчинено. Тікай!"));
             }
             State = GameState.Choosing;
             hud.ShowBuffChoice(BuffSet.RollChoices(3));
@@ -453,7 +459,7 @@ namespace Candlewick
                     if (trail.IsNear(checkpoint.Pos, 7f)) trail.Kill();
                 trails.RemoveAll(t => t.Dead);
                 Shake(0.5f);
-                hud.Toast("A rescued candle rekindles you");
+                hud.Toast(Loc.T("A rescued candle rekindles you", "Врятована свічка знову запалила тебе"));
                 return;
             }
 

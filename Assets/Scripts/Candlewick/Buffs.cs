@@ -8,8 +8,10 @@ namespace Candlewick
     public class BuffInfo
     {
         public BuffType Type;
-        public string Name, Description, Glyph;
+        public string NameEn, NameUk, DescriptionEn, DescriptionUk, Glyph;
         public Color Color;
+        public string Name => Loc.T(NameEn, NameUk);
+        public string Description => Loc.T(DescriptionEn, DescriptionUk);
     }
 
     /// <summary>Passive buffs granted by rescued candles. Every buff stacks.</summary>
@@ -17,12 +19,12 @@ namespace Candlewick
     {
         public static readonly BuffInfo[] All =
         {
-            new BuffInfo { Type = BuffType.MaxWax, Name = "Tallow Heart", Description = "+25 max wax, and refills that much", Glyph = "W", Color = new Color(0.96f, 0.88f, 0.72f) },
-            new BuffInfo { Type = BuffType.FireResist, Name = "Fire Resistance", Description = "Melt and take 20% less", Glyph = "R", Color = new Color(0.45f, 0.65f, 1f) },
-            new BuffInfo { Type = BuffType.WaxDrop, Name = "Wax Harvest", Description = "More drops, each worth +1 wax", Glyph = "D", Color = new Color(1f, 0.82f, 0.3f) },
-            new BuffInfo { Type = BuffType.BurningAura, Name = "Burning Aura", Description = "Scorch enemies that come close", Glyph = "A", Color = new Color(1f, 0.35f, 0.1f) },
-            new BuffInfo { Type = BuffType.QuickWick, Name = "Quick Wick", Description = "Your flame burns 20% hotter", Glyph = "Q", Color = new Color(1f, 0.6f, 0.2f) },
-            new BuffInfo { Type = BuffType.LongFlame, Name = "Long Flame", Description = "Your flame reaches 20% farther", Glyph = "L", Color = new Color(1f, 0.95f, 0.65f) },
+            new BuffInfo { Type = BuffType.MaxWax, NameEn = "Tallow Heart", NameUk = "Лойове серце", DescriptionEn = "+25 max wax, and refills that much", DescriptionUk = "+25 до макс. воску й стільки ж відновлює", Glyph = "W", Color = new Color(0.96f, 0.88f, 0.72f) },
+            new BuffInfo { Type = BuffType.FireResist, NameEn = "Fire Resistance", NameUk = "Стійкість до вогню", DescriptionEn = "Melt and take 20% less", DescriptionUk = "Танення та шкода менші на 20%", Glyph = "R", Color = new Color(0.45f, 0.65f, 1f) },
+            new BuffInfo { Type = BuffType.WaxDrop, NameEn = "Wax Harvest", NameUk = "Восковий урожай", DescriptionEn = "More drops, each worth +1 wax", DescriptionUk = "Більше крапель, кожна дає +1 воску", Glyph = "D", Color = new Color(1f, 0.82f, 0.3f) },
+            new BuffInfo { Type = BuffType.BurningAura, NameEn = "Burning Aura", NameUk = "Палюча аура", DescriptionEn = "Scorch enemies that come close", DescriptionUk = "Обпалює ворогів поруч", Glyph = "A", Color = new Color(1f, 0.35f, 0.1f) },
+            new BuffInfo { Type = BuffType.QuickWick, NameEn = "Quick Wick", NameUk = "Швидкий гніт", DescriptionEn = "Your flame burns 20% hotter", DescriptionUk = "Полум'я пече на 20% сильніше", Glyph = "Q", Color = new Color(1f, 0.6f, 0.2f) },
+            new BuffInfo { Type = BuffType.LongFlame, NameEn = "Long Flame", NameUk = "Довге полум'я", DescriptionEn = "Your flame reaches 20% farther", DescriptionUk = "Полум'я сягає на 20% далі", Glyph = "L", Color = new Color(1f, 0.95f, 0.65f) },
         };
 
         readonly Dictionary<BuffType, int> stacks = new Dictionary<BuffType, int>();

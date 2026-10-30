@@ -205,14 +205,14 @@ namespace Candlewick
                 "<b>E</b>  Share 15 wax with an unlit candle once its room is clear\n\n" +
                 "Light 3 candles to open the gate on each floor, and get through all 3 floors to escape.\n" +
                 "Ghosts pass through walls and can't be killed: fire only scatters them, and they stay out of candlelight.\n" +
-                "Enemies drop wax. Lit candles grant a buff, stop your melting nearby, and rekindle you once if your flame dies.",
+                "Enemies drop wax. Lit candles grant a buff, restore your wax nearby, and rekindle you once if your flame dies.",
                 "<b>WASD</b>  Рух          <b>Миша</b>  Приціл          <b>Утримуй ліву кнопку</b>  Дихати вогнем\n" +
                 "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 воску/с за швидкість, світло й широке полум'я\n" +
                 "<b>Q / Пробіл</b>  Приглушений режим: майже не таєш, але ти повільний, слабкий і погано бачиш\n" +
                 "<b>E</b>  Поділитися 15 воску з незапаленою свічкою, коли кімнату зачищено\n\n" +
                 "На кожному поверсі запали 3 свічки, щоб відчинити ворота, і пройди всі 3 поверхи, щоб утекти.\n" +
                 "Привиди проходять крізь стіни, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони уникають.\n" +
-                "З ворогів падає віск. Запалена свічка дає посилення, зупиняє танення поруч і один раз відроджує, якщо ти згаснеш.");
+                "З ворогів падає віск. Запалена свічка дає посилення, відновлює віск поруч і один раз відроджує, якщо ти згаснеш.");
             var help = Label(panel, controls, 30, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(1760f, 400f));
             help.supportRichText = true;
             help.color = TextColor;

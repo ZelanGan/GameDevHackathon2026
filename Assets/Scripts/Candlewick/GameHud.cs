@@ -323,7 +323,7 @@ namespace Candlewick
             heading.font = menuFont;
             heading.color = Art.Flame;
             string controls = Loc.T(
-                "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Fire\n" +
+                "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Fire (costs light)\n" +
                 "<b>Right Click / Shift</b>  Toggle Flare: burns 3 light/s for speed, reach and a wide flame\n" +
                 "<b>Q</b>  Toggle Dim: barely fades, but you are slow, weak and half blind\n" +
                 "<b>E</b>  Reach out to a soul (5 light) or light a candle (15 light, when no shadows are near it)\n\n" +
@@ -332,7 +332,7 @@ namespace Candlewick
                 "Ghosts pass through walls, take your souls and can't be killed: fire only scatters them, and they fear candlelight.\n" +
                 "The more light you have, the harder you hit. The less you have, the faster you run. Pits cost 15 light.\n" +
                 "At sunrise the day ends: souls still with you are saved, the rest stay lost. Each day is harder than the last.",
-                "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Вогонь\n" +
+                "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Вогонь (витрачає світло)\n" +
                 "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 світла/с за швидкість, дальність і широке полум'я\n" +
                 "<b>Q</b>  Приглушений режим: майже не згасаєш, але ти повільний, слабкий і погано бачиш\n" +
                 "<b>E</b>  Простягнути руку душі (5 світла) або запалити свічку (15 світла, коли поруч немає тіней)\n\n" +

@@ -17,7 +17,7 @@ namespace Candlewick
         public static readonly Color Gloom = new Color(0.32f, 0.12f, 0.5f);
 
         public static Material Lit, Glow;
-        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Soul, Child, Cape, Bunk, Desk, Wardrobe, Fridge, Stove, Shower, TileKitchen, TileShower, TileStairs, Landing, StairFlight, Floor, FloorAlt, WallTop, WallFace, Plank, Sky, SkyStars, Window, Banner, Pillar, Arrow;
+        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Soul, Child, Cape, Bunk, Desk, Wardrobe, Fridge, Stove, Shower, TileKitchen, TileShower, TileStairs, Landing, StairFlight, Washer, Sofa, Tv, Shelf, Boxes, Floor, FloorAlt, WallTop, WallFace, Plank, Sky, SkyStars, Window, Banner, Pillar, Arrow;
 
         public static void Init()
         {
@@ -50,6 +50,11 @@ namespace Candlewick
             TileStairs = Load("tile_stairs");
             Landing = Load("landing");
             StairFlight = Load("stair_flight");
+            Washer = Load("washer");
+            Sofa = Load("sofa");
+            Tv = Load("tv");
+            Shelf = Load("shelf");
+            Boxes = Load("boxes");
 
             // Side view: Floor is the dormitory wall behind the action, WallTop is solid rock, WallFace a walkable ledge.
             Floor = Load("wall_back");

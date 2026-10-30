@@ -4,7 +4,7 @@ using UnityEngine.Tilemaps;
 
 namespace Candlewick
 {
-    public enum RoomKind { Stairs, Dorm, Kitchen, Shower, Corridor, Lobby, Roof }
+    public enum RoomKind { Stairs, Dorm, Kitchen, Shower, Corridor, Lobby, Roof, Study, Lounge, Laundry, Storage }
 
     public class Room
     {
@@ -28,10 +28,9 @@ namespace Candlewick
     public class DungeonMap
     {
         public const float KillY = 3.5f; // Falling below this means the player fell into a pit.
-        const int Margin = 12, WallThickness = 2, SlabThickness = 2, GroundRow = 9, Storeys = 4, StoreyHeight = 7, RoofHeight = 7;
+        const int Margin = 12, WallThickness = 2, SlabThickness = 2, GroundRow = 9, RoofHeight = 7;
         const int MaxStairGap = 32, DoorHeight = 3, ShaftWidth = 8, StairWidth = 4, StairRise = 3, SkyAbove = 10, MinRoomWidth = 8;
         const float BodyStep = 0.2f;
-        public static readonly Color NightSky = new Color(0.1f, 0.12f, 0.3f);
 
         public readonly int Width, Height;
         public readonly List<Room> Rooms = new List<Room>();
@@ -43,7 +42,14 @@ namespace Candlewick
         readonly int[] dist, roofAt;
         readonly Queue<int> queue = new Queue<int>();
         readonly byte[] wallTiles;
-        readonly int interiorWidth;
+        readonly int interiorWidth, storeys;
+        readonly int[] floors, heights;
+        readonly Color[] paint;
+        readonly Palette palette;
+        int blockCentre;
+        RoomKind[] kindsBelow;
+        const float StackChance = 0.12f; // How often a room may repeat the one directly below it.
+        public Color DoorTint => palette.Door;
         readonly bool[] landing;
         readonly List<int> shafts = new List<int>();
         readonly List<StairFlight> flights = new List<StairFlight>();
@@ -59,15 +65,29 @@ namespace Candlewick
         Tilemap skyMap;
 
         /// <summary>Generates a new dormitory; a higher size (the day of the week) makes the building longer.</summary>
-        public DungeonMap(int size)
+        public DungeonMap(int size, Palette palette = null)
         {
+            this.palette = palette ?? Palette.All[Random.Range(0, Palette.All.Length)];
+            // Taller and lower buildings, with later days never the lowest so there are rooms for everyone.
+            storeys = Mathf.Max(Random.Range(3, 6), size >= 3 ? 4 : 3);
+            floors = new int[storeys + 1];
+            heights = new int[storeys];
+            floors[0] = GroundRow;
+            for (int s = 0; s < storeys; s++)
+            {
+                heights[s] = Random.Range(6, 9);
+                floors[s + 1] = floors[s] + heights[s] + SlabThickness;
+            }
+
             // Long enough for a dorm room and a mid-building stairwell in each half of the plan.
             interiorWidth = 150 + size * 10 + Random.Range(0, 9);
             Width = Margin * 2 + interiorWidth;
-            Height = FloorRow(Storeys) + RoofHeight + SkyAbove;
+            Height = floors[storeys] + RoofHeight + SkyAbove;
 
             open = new bool[Width * Height];
             oneWay = new bool[Width * Height];
+            paint = new Color[Width * Height];
+            for (int i = 0; i < paint.Length; i++) paint[i] = Color.white;
             landing = new bool[Width * Height];
             sky = new bool[Width * Height];
             wallTiles = new byte[Width * Height];
@@ -77,12 +97,10 @@ namespace Candlewick
             Generate();
         }
 
-        static int FloorRow(int storey) => GroundRow + storey * (StoreyHeight + SlabThickness);
-
         void Generate()
         {
             for (int x = 0; x < Width; x++) roofAt[x] = GroundRow;
-            int roofRow = FloorRow(Storeys);
+            int roofRow = floors[storeys];
             for (int x = Margin - WallThickness; x < Margin + interiorWidth + WallThickness; x++) roofAt[x] = roofRow;
             // A low parapet at each end of the roof.
             for (int w = 1; w <= WallThickness; w++)
@@ -92,7 +110,7 @@ namespace Candlewick
             }
 
             MakePlan();
-            for (int s = 0; s < Storeys; s++) BuildStorey(s);
+            for (int s = 0; s < storeys; s++) BuildStorey(s);
 
             var roof = new RectInt(Margin, roofRow + 1, interiorWidth, RoofHeight);
             Rooms.Add(new Room { Rect = roof, FloorY = roofRow, Kind = RoomKind.Roof });
@@ -106,10 +124,10 @@ namespace Candlewick
 
             // The ray lands in a dorm room near the middle of the building, not too far from anything.
             float best = float.MaxValue;
-            var centre = new Vector2(Width / 2f, FloorRow(Storeys / 2));
+            var centre = new Vector2(Width / 2f, floors[storeys / 2]);
             foreach (var room in Rooms)
             {
-                if (room.Kind != RoomKind.Dorm) continue;
+                if (room.Kind != RoomKind.Dorm && room.Kind != RoomKind.Study && room.Kind != RoomKind.Lounge) continue;
                 float d = Vector2.Distance(room.Center, centre) * Random.Range(1f, 1.3f);
                 if (d >= best) continue;
                 best = d;
@@ -118,50 +136,39 @@ namespace Candlewick
             StartWindow = WindowSpot(StartRoom);
         }
 
-        // One plan serves every storey, so walls line up and kitchens and showers stack, as in a real building.
-        // It mirrors around the centre: corridor, dorm rooms with stairwells among them, kitchen, then the
-        // shared showers in the middle. A stairwell goes in whenever the last one is getting far behind.
+        // One plan of wall positions serves every storey, so walls line up as in a real building.
+        // Two wings of rooms sit either side of a central kitchen-showers block. The wings may mirror each
+        // other or differ, and a stairwell goes in whenever the last one is getting far behind.
         void MakePlan()
         {
             int span = interiorWidth - ShaftWidth * 2 - WallThickness * 2;
-            int showers = Random.Range(MinRoomWidth, 11);
-            int kitchen = Random.Range(11, 14);
-            int corridor = Random.Range(12, 17);
-            int half = (span - showers) / 2 - WallThickness;
-            // Every half always gets a stairwell by the kitchen, so nobody has to walk to the end of the building.
-            int used = corridor + WallThickness + ShaftWidth + WallThickness + kitchen + WallThickness;
+            bool showersInMiddle = Random.value < 0.6f;
+            int outer = showersInMiddle ? Random.Range(11, 14) : Random.Range(MinRoomWidth, 11);
+            int inner = showersInMiddle ? Random.Range(MinRoomWidth, 11) : Random.Range(11, 14);
+            var outerKind = showersInMiddle ? RoomKind.Kitchen : RoomKind.Shower;
+            var innerKind = showersInMiddle ? RoomKind.Shower : RoomKind.Kitchen;
 
-            var left = new List<KeyValuePair<RoomKind, int>>();
-            int sinceStairs = corridor;
-            while (true)
+            int wings = span + WallThickness - (outer + inner + outer + WallThickness * 3);
+            bool mirrored = Random.value < 0.5f;
+            int leftBudget = mirrored ? wings / 2 : Mathf.RoundToInt(wings * Random.Range(0.4f, 0.6f));
+            int rightBudget = wings - leftBudget;
+
+            var left = BuildWing(leftBudget);
+            List<KeyValuePair<RoomKind, int>> right;
+            if (mirrored)
             {
-                int dorm = Random.Range(10, 13);
-                bool needStairs = sinceStairs + dorm > MaxStairGap;
-                int cost = dorm + WallThickness + (needStairs ? ShaftWidth + WallThickness : 0);
-                if (used + cost > half) break;
-                if (needStairs)
-                {
-                    left.Add(new KeyValuePair<RoomKind, int>(RoomKind.Stairs, ShaftWidth));
-                    sinceStairs = 0;
-                }
-                left.Add(new KeyValuePair<RoomKind, int>(RoomKind.Dorm, dorm));
-                sinceStairs += dorm + WallThickness;
-                used += cost;
+                right = new List<KeyValuePair<RoomKind, int>>(left);
+                int corridor = right.FindIndex(r => r.Key == RoomKind.Corridor);
+                right[corridor] = new KeyValuePair<RoomKind, int>(RoomKind.Corridor, right[corridor].Value + rightBudget - leftBudget);
             }
-            // Whatever is left lengthens the corridors, keeping both halves equal.
-            corridor += half - used + WallThickness;
+            else right = BuildWing(rightBudget);
 
-            AddToPlan(RoomKind.Corridor, corridor);
             foreach (var room in left) AddToPlan(room.Key, room.Value);
-            AddToPlan(RoomKind.Stairs, ShaftWidth);
-            AddToPlan(RoomKind.Kitchen, kitchen);
-            AddToPlan(RoomKind.Shower, showers);
-            AddToPlan(RoomKind.Kitchen, kitchen);
-            AddToPlan(RoomKind.Stairs, ShaftWidth);
-            for (int i = left.Count - 1; i >= 0; i--) AddToPlan(left[i].Key, left[i].Value);
-            int total = -WallThickness;
-            foreach (int w in planWidths) total += w + WallThickness;
-            AddToPlan(RoomKind.Corridor, span - total - WallThickness);
+            AddToPlan(outerKind, outer);
+            blockCentre = planKinds.Count;
+            AddToPlan(innerKind, inner);
+            AddToPlan(outerKind, outer);
+            for (int i = right.Count - 1; i >= 0; i--) AddToPlan(right[i].Key, right[i].Value);
 
             // Stairwell positions, which every storey shares.
             shafts.Add(Margin);
@@ -174,6 +181,39 @@ namespace Candlewick
             shafts.Add(x);
         }
 
+        // Rooms running from the end of the building towards the centre, adding up to the budget exactly.
+        // Each wing always ends in a stairwell by the central block, so nobody walks to the end of the building.
+        static List<KeyValuePair<RoomKind, int>> BuildWing(int budget)
+        {
+            int corridor = Random.Range(12, 17);
+            int used = corridor + WallThickness + ShaftWidth + WallThickness;
+            var rooms = new List<KeyValuePair<RoomKind, int>>();
+            int sinceStairs = corridor;
+            while (true)
+            {
+                int dorm = Random.Range(10, 13);
+                bool needStairs = sinceStairs + dorm > MaxStairGap;
+                int cost = dorm + WallThickness + (needStairs ? ShaftWidth + WallThickness : 0);
+                if (used + cost > budget) break;
+                if (needStairs)
+                {
+                    rooms.Add(new KeyValuePair<RoomKind, int>(RoomKind.Stairs, ShaftWidth));
+                    sinceStairs = 0;
+                }
+                rooms.Add(new KeyValuePair<RoomKind, int>(RoomKind.Dorm, dorm));
+                sinceStairs += dorm + WallThickness;
+                used += cost;
+            }
+
+            // Whatever is left lengthens the corridor, which runs along the outside or the inside of the wing.
+            corridor += budget - used;
+            var entry = new KeyValuePair<RoomKind, int>(RoomKind.Corridor, corridor);
+            if (Random.value < 0.5f) rooms.Insert(0, entry);
+            else rooms.Add(entry);
+            rooms.Add(new KeyValuePair<RoomKind, int>(RoomKind.Stairs, ShaftWidth));
+            return rooms;
+        }
+
         void AddToPlan(RoomKind kind, int width)
         {
             planKinds.Add(kind);
@@ -182,42 +222,142 @@ namespace Candlewick
 
         void BuildStorey(int storey)
         {
-            int floor = FloorRow(storey);
+            int floor = floors[storey], height = heights[storey];
+            var corridorPaint = palette.Walls[storey % palette.Walls.Length];
+            var kinds = ChooseKinds(storey);
             int x = Margin;
-            AddRoom(RoomKind.Stairs, x, ShaftWidth, floor);
+            AddRoom(RoomKind.Stairs, x, ShaftWidth, floor, height, Color.white);
             x += ShaftWidth;
             CutDoor(x, floor);
             x += WallThickness;
 
-            int centre = planKinds.IndexOf(RoomKind.Shower);
             for (int i = 0; i < planKinds.Count; i++)
             {
-                var kind = planKinds[i];
+                var kind = kinds[i];
                 int width = planWidths[i];
-                // On the ground floor the kitchens and showers give way to one big lobby.
-                if (storey == 0 && i == centre - 1)
+                var colour = kind == RoomKind.Corridor ? corridorPaint : palette.Walls[Random.Range(0, palette.Walls.Length)];
+                // On the ground floor the central block gives way to one big lobby.
+                if (kind == RoomKind.Lobby)
                 {
-                    kind = RoomKind.Lobby;
                     width = planWidths[i] + planWidths[i + 1] + planWidths[i + 2] + WallThickness * 2;
+                    colour = palette.Lobby;
                     i += 2;
                 }
-                AddRoom(kind, x, width, floor);
+                AddRoom(kind, x, width, floor, height, colour);
                 x += width;
                 CutDoor(x, floor);
                 x += WallThickness;
             }
-            AddRoom(RoomKind.Stairs, x, ShaftWidth, floor);
+            AddRoom(RoomKind.Stairs, x, ShaftWidth, floor, height, Color.white);
+            kindsBelow = kinds;
         }
 
-        void AddRoom(RoomKind kind, int x, int width, int floor)
+        // Walls line up between storeys, but what fills each slot is chosen per storey. The same room
+        // directly above another happens only occasionally. Every storey still has a bedroom, and every
+        // storey above the lobby has a kitchen and a shower, as a real dormitory would.
+        RoomKind[] ChooseKinds(int storey)
         {
-            var rect = new RectInt(x, floor + 1, width, StoreyHeight);
+            var kinds = new RoomKind[planKinds.Count];
+            var locked = new bool[planKinds.Count];
+            for (int i = 0; i < kinds.Length; i++)
+                if (planKinds[i] == RoomKind.Stairs)
+                {
+                    kinds[i] = RoomKind.Stairs;
+                    locked[i] = true;
+                }
+            if (storey == 0)
+            {
+                for (int i = blockCentre - 1; i <= blockCentre + 1; i++)
+                {
+                    kinds[i] = RoomKind.Lobby;
+                    locked[i] = true;
+                }
+            }
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (locked[i]) continue;
+                kinds[i] = PickKind(planWidths[i]);
+                for (int attempt = 0; attempt < 8 && IsBelow(i, kinds[i]) && Random.value > StackChance; attempt++)
+                    kinds[i] = PickKind(planWidths[i]);
+            }
+            Require(kinds, locked, RoomKind.Dorm);
+            if (storey > 0)
+            {
+                Require(kinds, locked, RoomKind.Kitchen);
+                Require(kinds, locked, RoomKind.Shower);
+            }
+            return kinds;
+        }
+
+        bool IsBelow(int slot, RoomKind kind) => kindsBelow != null && kindsBelow[slot] == kind;
+
+        void Require(RoomKind[] kinds, bool[] locked, RoomKind kind)
+        {
+            for (int i = 0; i < kinds.Length; i++)
+                if (kinds[i] == kind && !locked[i])
+                {
+                    locked[i] = true;
+                    return;
+                }
+            int fallback = -1, seen = 0, seenFree = 0, free = -1;
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (locked[i] || planWidths[i] < MinWidthFor(kind)) continue;
+                if (Random.Range(0, ++seen) == 0) fallback = i;
+                if (!IsBelow(i, kind) && Random.Range(0, ++seenFree) == 0) free = i;
+            }
+            int slot = free >= 0 ? free : fallback;
+            if (slot < 0) return;
+            kinds[slot] = kind;
+            locked[slot] = true;
+        }
+
+        static int MinWidthFor(RoomKind kind)
+        {
+            switch (kind)
+            {
+                case RoomKind.Kitchen:
+                case RoomKind.Shower:
+                case RoomKind.Laundry: return MinRoomWidth;
+                case RoomKind.Corridor: return 12;
+                default: return 10;
+            }
+        }
+
+        static RoomKind PickKind(int width)
+        {
+            while (true)
+            {
+                float roll = Random.value;
+                RoomKind kind;
+                if (roll < 0.42f) kind = RoomKind.Dorm;
+                else if (roll < 0.56f) kind = RoomKind.Corridor;
+                else if (roll < 0.66f) kind = RoomKind.Kitchen;
+                else if (roll < 0.74f) kind = RoomKind.Shower;
+                else if (roll < 0.84f) kind = RoomKind.Study;
+                else if (roll < 0.92f) kind = RoomKind.Lounge;
+                else if (roll < 0.97f) kind = RoomKind.Laundry;
+                else kind = RoomKind.Storage;
+                if (width >= MinWidthFor(kind)) return kind;
+            }
+        }
+
+        void AddRoom(RoomKind kind, int x, int width, int floor, int height, Color colour)
+        {
+            var rect = new RectInt(x, floor + 1, width, height);
             Rooms.Add(new Room { Rect = rect, FloorY = floor, Kind = kind });
             Carve(rect, true);
-            byte tile = kind == RoomKind.Kitchen ? (byte)1 : kind == RoomKind.Shower ? (byte)2 : kind == RoomKind.Stairs ? (byte)3 : (byte)0;
-            for (int y = rect.yMin; y < rect.yMax; y++)
-                for (int c = rect.xMin; c < rect.xMax; c++)
+            byte tile = kind == RoomKind.Kitchen ? (byte)1 : kind == RoomKind.Shower || kind == RoomKind.Laundry ? (byte)2 : kind == RoomKind.Stairs ? (byte)3 : (byte)0;
+            var floorColour = Color.Lerp(Color.white, colour, 0.55f);
+            for (int c = rect.xMin; c < rect.xMax; c++)
+            {
+                paint[floor * Width + c] = floorColour;
+                for (int y = rect.yMin; y < rect.yMax; y++)
+                {
                     wallTiles[y * Width + c] = tile;
+                    paint[y * Width + c] = tile == 0 ? colour : Color.white;
+                }
+            }
 
             // The top bunk doubles as a platform.
             if (kind == RoomKind.Dorm)
@@ -239,10 +379,10 @@ namespace Candlewick
         void CutStairs(int shaftX)
         {
             int x = shaftX + (ShaftWidth - StairWidth) / 2;
-            for (int s = 0; s < Storeys; s++)
+            for (int s = 0; s < storeys; s++)
             {
-                int floor = FloorRow(s), above = FloorRow(s + 1);
-                var hole = new RectInt(x, floor + StoreyHeight + 1, StairWidth, SlabThickness);
+                int floor = floors[s], above = floors[s + 1];
+                var hole = new RectInt(x, floor + heights[s] + 1, StairWidth, SlabThickness);
                 Carve(hole, true);
                 for (int r = hole.yMin; r < hole.yMax; r++)
                     for (int c = hole.xMin; c < hole.xMax; c++)
@@ -470,7 +610,7 @@ namespace Candlewick
             grid2.transform.SetParent(parent, false);
             var background = NewTilemap(grid2.transform, "Tiles", 0, Art.Lit);
             skyMap = NewTilemap(grid2.transform, "Sky", 0, Art.Glow);
-            SetSkyTint(NightSky);
+            SetSkyTint(palette.NightSky);
             var planks = NewTilemap(grid2.transform, "Platforms", 1, Art.Lit);
 
             var backWall = NewTile(Art.Floor);
@@ -496,19 +636,18 @@ namespace Candlewick
                         {
                             byte kind = wallTiles[y * Width + x];
                             background.SetTile(cell, kind == 1 ? kitchen : kind == 2 ? shower : kind == 3 ? stairWall : (x * 7 + y * 13 + (x ^ y)) % 5 == 0 ? backWallAlt : backWall);
+                            background.SetColor(cell, paint[y * Width + x]);
                         }
                         if (IsOneWay(x, y)) planks.SetTile(cell, landing[y * Width + x] ? stairLanding : plank);
                     }
                     else if (y <= RoofOf(x))
+                    {
                         background.SetTile(cell, IsOpen(x, y + 1) ? ledge : stone);
+                        if (InMap(x) && y >= 0 && y < Height) background.SetColor(cell, paint[y * Width + x]);
+                    }
                     else
                         skyMap.SetTile(cell, (x * 31 + y * 17) % 23 == 0 ? stars : night);
                 }
-
-            // The bottom of every pit fades into gloom instead of showing a floor.
-            var gloom = Art.Spr("PitGloom", parent, Art.Square, Art.Glow, new Color(0.05f, 0.01f, 0.1f, 0.96f), 3);
-            gloom.transform.localScale = new Vector3(Width, KillY + 1f, 1f);
-            gloom.transform.localPosition = new Vector3(Width / 2f, (KillY + 1f) / 2f, 0f);
 
             // The moon hangs over the roof.
             var moon = Art.Spr("Moon", parent, Art.Disk, Art.Glow, new Color(0.86f, 0.9f, 1f), 0, 4f);
@@ -548,6 +687,27 @@ namespace Candlewick
                         Window(root, window.x, top);
                         Poster(root, right - 3.2f, floor + 3.6f);
                         break;
+                    case RoomKind.Study:
+                        for (float x = left + 1.6f; x < right - 3f; x += 3f)
+                            PlaceDecor(root, Art.Desk, Art.Lit, Color.white, new Vector2(x, floor + 0.7f), new Vector2(2f, 1.5f));
+                        PlaceDecor(root, Art.Shelf, Art.Lit, Color.white, new Vector2(right - 1.3f, floor + 1.6f), new Vector2(1.8f, 3.2f));
+                        Window(root, WindowSpot(room).x, top);
+                        break;
+                    case RoomKind.Lounge:
+                        PlaceDecor(root, Art.Sofa, Art.Lit, palette.Poster, new Vector2(left + 2.6f, floor + 0.7f), new Vector2(3.6f, 1.5f));
+                        PlaceDecor(root, Art.Tv, Art.Lit, Color.white, new Vector2(right - 1.8f, floor + 1f), new Vector2(2.2f, 2f));
+                        Window(root, WindowSpot(room).x, top);
+                        Poster(root, left + 2.6f, floor + 3.2f);
+                        break;
+                    case RoomKind.Laundry:
+                        for (float x = left + 1.2f; x < right - 1f; x += 2f)
+                            PlaceDecor(root, Art.Washer, Art.Lit, Color.white, new Vector2(x, floor + 0.85f), new Vector2(1.6f, 1.7f));
+                        break;
+                    case RoomKind.Storage:
+                        PlaceDecor(root, Art.Boxes, Art.Lit, Color.white, new Vector2(left + 2.4f, floor + 1f), new Vector2(3.2f, 2f));
+                        PlaceDecor(root, Art.Boxes, Art.Lit, Color.white, new Vector2(right - 2.4f, floor + 1f), new Vector2(-3.2f, 2f));
+                        PlaceDecor(root, Art.Shelf, Art.Lit, Color.white, new Vector2((left + right) / 2f, floor + 1.6f), new Vector2(1.8f, 3.2f));
+                        break;
                     case RoomKind.Kitchen:
                         PlaceDecor(root, Art.Fridge, Art.Lit, Color.white, new Vector2(left + 1.3f, floor + 1.5f), new Vector2(1.5f, 3f));
                         PlaceDecor(root, Art.Stove, Art.Lit, Color.white, new Vector2(left + 3.2f, floor + 0.9f), new Vector2(1.8f, 1.8f));
@@ -580,15 +740,15 @@ namespace Candlewick
 
         static Vector2 WindowSpot(Room room) => new Vector2((room.Rect.xMin + room.Rect.xMax) / 2f + 0.8f, room.Rect.yMax - 2f);
 
-        static void Door(Transform root, float x, float floor) =>
-            PlaceDecor(root, Art.Pillar, Art.Lit, Color.white, new Vector2(x, floor + 1.5f), new Vector2(1.5f, 3f));
+        void Door(Transform root, float x, float floor) =>
+            PlaceDecor(root, Art.Pillar, Art.Lit, palette.Door, new Vector2(x, floor + 1.5f), new Vector2(1.5f, 3f));
 
         static void Window(Transform root, float x, float top) =>
             PlaceDecor(root, Art.Window, Art.Glow, new Color(0.45f, 0.62f, 1f, 0.75f), new Vector2(x, top - 2f), new Vector2(1.4f, 2.4f));
 
-        static void Poster(Transform root, float x, float y)
+        void Poster(Transform root, float x, float y)
         {
-            var colour = Random.value < 0.5f ? new Color(0.95f, 0.85f, 0.6f) : new Color(0.65f, 0.8f, 0.95f);
+            var colour = Random.value < 0.5f ? palette.Poster : palette.Walls[Random.Range(0, palette.Walls.Length)];
             PlaceDecor(root, Art.Banner, Art.Lit, colour, new Vector2(x, y), new Vector2(1.2f, 1.2f));
         }
 
@@ -617,6 +777,7 @@ namespace Candlewick
         {
             var tile = ScriptableObject.CreateInstance<Tile>();
             tile.sprite = sprite;
+            tile.flags = TileFlags.None; // Lets each cell be painted its own colour.
             return tile;
         }
     }

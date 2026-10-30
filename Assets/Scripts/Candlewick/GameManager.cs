@@ -13,8 +13,10 @@ namespace Candlewick
     {
         public const int FloorCount = 3;
         public const int CandlesToOpen = 3;
+        public const int CaptivesPerFloor = 3;
+        public const int TotalCaptives = CaptivesPerFloor * FloorCount;
         const int CandlesPerFloor = 5, MaxGhosts = 5;
-        const float LightCost = 15f, ReviveFraction = 0.45f, FirstGhostDelay = 5f, SecondsPerExtraGhost = 45f;
+        const float LightCost = 15f, FreeCost = 5f, WaxPerRescue = 10f, ReviveFraction = 0.45f, FirstGhostDelay = 5f, SecondsPerExtraGhost = 45f;
 
         public GameState State { get; private set; } = GameState.Title;
         public DungeonMap Map { get; private set; }
@@ -25,6 +27,9 @@ namespace Candlewick
         public Transform WorldRoot { get; private set; }
         public readonly List<Enemy> Enemies = new List<Enemy>();
         public readonly List<Altar> Altars = new List<Altar>();
+        public readonly List<Captive> Captives = new List<Captive>();
+        public int Rescued { get; private set; }
+        public int LostCaptives { get; private set; }
 
         public int Depth { get; private set; } = 1;
         public int Kills;
@@ -121,6 +126,16 @@ namespace Candlewick
                 room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
             }
 
+            // Captives wait in rooms of their own, always guarded.
+            for (int i = 0; i < CaptivesPerFloor; i++)
+            {
+                int pick = Random.Range(0, middle.Count);
+                var room = middle[pick];
+                middle.RemoveAt(pick);
+                Captives.Add(new Captive(this, room, room.Stand + Vector2.up * 0.25f));
+                room.WavesLeft = Mathf.Max(room.WavesLeft, 1 + Mathf.Min(Depth / 2, 1));
+            }
+
             float previousWax = Player != null ? Player.Wax : 100f;
             float previousMax = Player != null ? Player.MaxWax : 100f;
             Player = new PlayerCandle(this, WorldRoot, start.Stand) { MaxWax = previousMax };
@@ -136,6 +151,7 @@ namespace Candlewick
         {
             Enemies.Clear();
             Altars.Clear();
+            Captives.Clear();
             flames.Clear();
             bolts.Clear();
             drops.Clear();
@@ -190,6 +206,9 @@ namespace Candlewick
 
             CurrentGate.Tick(dt);
             foreach (var altar in Altars) altar.Tick(this, dt);
+            int followOrder = 0;
+            foreach (var captive in Captives)
+                captive.Tick(dt, captive.State == Captive.Status.Following ? followOrder++ : 0);
             for (int i = 0; i < Enemies.Count; i++) Enemies[i].Tick(dt);
             SeparateEnemies();
             TickList(flames, f => f.Tick(dt), f => f.Dead);
@@ -358,6 +377,13 @@ namespace Candlewick
                     ? Loc.T("[E] Escape the castle", "[E] Втекти із замку")
                     : Loc.T("[E] Descend to the next floor", "[E] Спуститися на наступний поверх");
             }
+            var caged = NearestCaged(Player.Pos);
+            if (caged != null && Vector2.Distance(caged.Pos, Player.Pos) <= Captive.FreeRange)
+            {
+                if (!caged.Room.Cleared) return Loc.T("Shadows guard this cage. Clear the room first", "Тіні стережуть цю клітку. Спершу зачисть кімнату");
+                if (Player.Wax <= FreeCost) return Loc.T("Not enough wax to share", "Замало воску, щоб поділитися");
+                return Loc.T("[E] Rescue this candle (-5 wax)", "[E] Врятувати цю свічку (-5 воску)");
+            }
             var altar = NearestUnlitAltar(Player.Pos);
             if (altar == null || Vector2.Distance(altar.Pos, Player.Pos) > Altar.InteractRange) return null;
             if (!altar.Room.Cleared) return Loc.T("The shadows smother this wick. Clear the room first", "Тіні душать цей гніт. Спершу зачисть кімнату");
@@ -379,6 +405,12 @@ namespace Candlewick
             {
                 if (CurrentGate.IsOpen) ReachGate();
                 else Sound.Deny();
+                return;
+            }
+            var caged = NearestCaged(Player.Pos);
+            if (caged != null && Vector2.Distance(caged.Pos, Player.Pos) <= Captive.FreeRange)
+            {
+                FreeCaptive(caged);
                 return;
             }
             var altar = NearestUnlitAltar(Player.Pos);
@@ -417,9 +449,63 @@ namespace Candlewick
             State = GameState.Playing;
         }
 
+        void FreeCaptive(Captive captive)
+        {
+            if (!captive.Room.Cleared || Player.Wax <= FreeCost)
+            {
+                Sound.Deny();
+                return;
+            }
+            Player.ChangeWax(-FreeCost);
+            captive.Free();
+            Sound.Light();
+            Particles.Burst(captive.Pos, 16, Art.Core, 3.5f);
+            hud.Toast(Loc.T("Saved from the cage. Now get it out alive", "Врятовано з клітки. Тепер виведи її живою"));
+        }
+
+        public int FollowerCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var captive in Captives) if (captive.State == Captive.Status.Following) n++;
+                return n;
+            }
+        }
+
+        public Captive NearestCaged(Vector2 from) => Nearest(from, Captive.Status.Caged);
+        public Captive NearestFollower(Vector2 from) => Nearest(from, Captive.Status.Following);
+
+        Captive Nearest(Vector2 from, Captive.Status status)
+        {
+            Captive best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var captive in Captives)
+            {
+                if (captive.State != status) continue;
+                float d = Vector2.Distance(captive.Pos, from);
+                if (d >= bestDistance) continue;
+                bestDistance = d;
+                best = captive;
+            }
+            return best;
+        }
+
+        public void LoseFollower(Captive captive)
+        {
+            captive.Snuff();
+            LostCaptives++;
+            Sound.Extinguish();
+            Shake(0.25f);
+            hud.Toast(Loc.T("A ghost snuffed out a candle you were saving", "Привид загасив свічку, яку ти рятував"));
+        }
+
         void ReachGate()
         {
             Sound.Light();
+            int arrived = FollowerCount;
+            Rescued += arrived;
+            Player.ChangeWax(arrived * WaxPerRescue);
             if (Depth >= FloorCount)
             {
                 State = GameState.Escaped;
@@ -455,6 +541,8 @@ namespace Candlewick
                 Enemies.RemoveAll(e => e.Dead);
                 foreach (var bolt in bolts) bolt.Kill();
                 bolts.Clear();
+                foreach (var captive in Captives)
+                    if (captive.State == Captive.Status.Following) captive.JoinPlayer();
                 foreach (var trail in trails)
                     if (trail.IsNear(checkpoint.Pos, 7f)) trail.Kill();
                 trails.RemoveAll(t => t.Dead);
@@ -491,6 +579,8 @@ namespace Candlewick
             Depth = 1;
             Kills = 0;
             TotalSaved = 0;
+            Rescued = 0;
+            LostCaptives = 0;
             SurvivalTime = 0f;
             Player = null;
             BuildNight();

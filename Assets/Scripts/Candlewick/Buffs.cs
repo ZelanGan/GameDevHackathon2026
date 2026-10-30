@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Candlewick
 {
-    public enum BuffType { MaxWax, FireResist, WaxDrop, BurningAura, QuickWick, LongFlame }
+    public enum BuffType { MaxWax, FireResist, WaxDrop, BurningAura, QuickWick, LongFlame, SteadyFlame }
 
     public class BuffInfo
     {
@@ -25,6 +25,7 @@ namespace Candlewick
             new BuffInfo { Type = BuffType.BurningAura, NameEn = "Burning Aura", NameUk = "Палюча аура", DescriptionEn = "Scorch enemies that come close", DescriptionUk = "Обпалює ворогів поруч", Glyph = "A", Color = new Color(1f, 0.35f, 0.1f) },
             new BuffInfo { Type = BuffType.QuickWick, NameEn = "Blazing Ray", NameUk = "Палкий промінь", DescriptionEn = "Your flame burns 20% hotter", DescriptionUk = "Полум'я пече на 20% сильніше", Glyph = "Q", Color = new Color(1f, 0.6f, 0.2f) },
             new BuffInfo { Type = BuffType.LongFlame, NameEn = "Long Flame", NameUk = "Довге полум'я", DescriptionEn = "Your flame reaches 20% farther", DescriptionUk = "Полум'я сягає на 20% далі", Glyph = "L", Color = new Color(1f, 0.95f, 0.65f) },
+            new BuffInfo { Type = BuffType.SteadyFlame, NameEn = "Steady Flame", NameUk = "Рівне полум'я", DescriptionEn = "Attacks cost 30% less light", DescriptionUk = "Атаки витрачають на 30% менше світла", Glyph = "S", Color = new Color(0.65f, 1f, 0.75f) },
         };
 
         readonly Dictionary<BuffType, int> stacks = new Dictionary<BuffType, int>();
@@ -39,6 +40,7 @@ namespace Candlewick
         public float AuraRadius => Level(BuffType.BurningAura) == 0 ? 0f : 2.2f + 0.5f * Level(BuffType.BurningAura);
         public float AuraDps => 14f * Level(BuffType.BurningAura);
         public float FireRateMultiplier => Mathf.Pow(1.2f, Level(BuffType.QuickWick));
+        public float AttackCostMultiplier => Mathf.Pow(0.7f, Level(BuffType.SteadyFlame));
         public float RangeMultiplier => 1f + 0.2f * Level(BuffType.LongFlame);
 
         public static List<BuffInfo> RollChoices(int count)

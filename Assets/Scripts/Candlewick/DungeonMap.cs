@@ -323,7 +323,8 @@ namespace Candlewick
 
         public bool IsOpen(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height && open[y * Width + x];
         public bool IsOpen(Vector2 p) => IsOpen(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
-        bool IsOneWay(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height && oneWay[y * Width + x];
+        public bool IsOneWay(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height && oneWay[y * Width + x];
+        public bool IsOpenSky(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Height && sky[y * Width + x];
 
         /// <summary>Whether a walker could stand on the cell containing this point.</summary>
         public bool IsStandable(Vector2 p)

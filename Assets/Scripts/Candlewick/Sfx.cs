@@ -12,8 +12,20 @@ namespace Candlewick
         float flameTarget;
         readonly System.Random rng = new System.Random(7);
 
+        const string VolumeKey = "candlewick.volume";
+
+        public static float Volume => PlayerPrefs.GetFloat(VolumeKey, 1f);
+
+        public void SetVolume(float volume)
+        {
+            AudioListener.volume = volume;
+            PlayerPrefs.SetFloat(VolumeKey, volume);
+            PlayerPrefs.Save();
+        }
+
         void Awake()
         {
+            AudioListener.volume = Volume;
             source = gameObject.AddComponent<AudioSource>();
             source.playOnAwake = false;
 

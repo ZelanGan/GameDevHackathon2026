@@ -205,8 +205,23 @@ namespace Candlewick
                 used += cost;
             }
 
-            // Whatever is left lengthens the corridor, which runs along the outside or the inside of the wing.
-            corridor += budget - used;
+            // Leftover space becomes more small rooms, and the last few cells widen the rooms already there,
+            // so no room ends up oversized just to fill the building.
+            int left = budget - used;
+            while (left >= 10 + WallThickness)
+            {
+                int extra = Mathf.Min(left - WallThickness, 12);
+                rooms.Add(new KeyValuePair<RoomKind, int>(RoomKind.Dorm, extra));
+                left -= extra + WallThickness;
+            }
+            for (int pass = 0; pass < 2 && left > 0; pass++)
+                for (int i = 0; i < rooms.Count && left > 0; i++)
+                {
+                    if (rooms[i].Key != RoomKind.Dorm || rooms[i].Value >= 14) continue;
+                    rooms[i] = new KeyValuePair<RoomKind, int>(RoomKind.Dorm, rooms[i].Value + 1);
+                    left--;
+                }
+            corridor += left;
             var entry = new KeyValuePair<RoomKind, int>(RoomKind.Corridor, corridor);
             if (Random.value < 0.5f) rooms.Insert(0, entry);
             else rooms.Add(entry);
@@ -239,9 +254,9 @@ namespace Candlewick
                 // On the ground floor the central block gives way to one big lobby.
                 if (kind == RoomKind.Lobby)
                 {
-                    width = planWidths[i] + planWidths[i + 1] + planWidths[i + 2] + WallThickness * 2;
+                    width = planWidths[i] + planWidths[i + 1] + WallThickness;
                     colour = palette.Lobby;
-                    i += 2;
+                    i += 1;
                 }
                 AddRoom(kind, x, width, floor, height, colour);
                 x += width;
@@ -267,7 +282,7 @@ namespace Candlewick
                 }
             if (storey == 0)
             {
-                for (int i = blockCentre - 1; i <= blockCentre + 1; i++)
+                for (int i = blockCentre; i <= blockCentre + 1; i++)
                 {
                     kinds[i] = RoomKind.Lobby;
                     locked[i] = true;
@@ -280,12 +295,10 @@ namespace Candlewick
                 for (int attempt = 0; attempt < 8 && IsBelow(i, kinds[i]) && Random.value > StackChance; attempt++)
                     kinds[i] = PickKind(planWidths[i]);
             }
+            // Fussiest size first, so a kitchen can't take the only slot a shower room would fit in.
+            if (storey > 0) Require(kinds, locked, RoomKind.Shower);
             Require(kinds, locked, RoomKind.Dorm);
-            if (storey > 0)
-            {
-                Require(kinds, locked, RoomKind.Kitchen);
-                Require(kinds, locked, RoomKind.Shower);
-            }
+            if (storey > 0) Require(kinds, locked, RoomKind.Kitchen);
             return kinds;
         }
 
@@ -302,7 +315,7 @@ namespace Candlewick
             int fallback = -1, seen = 0, seenFree = 0, free = -1;
             for (int i = 0; i < kinds.Length; i++)
             {
-                if (locked[i] || planWidths[i] < MinWidthFor(kind)) continue;
+                if (locked[i] || !Fits(kind, planWidths[i])) continue;
                 if (Random.Range(0, ++seen) == 0) fallback = i;
                 if (!IsBelow(i, kind) && Random.Range(0, ++seenFree) == 0) free = i;
             }
@@ -312,15 +325,19 @@ namespace Candlewick
             locked[slot] = true;
         }
 
-        static int MinWidthFor(RoomKind kind)
+        // A shower room or a bedroom can't logically be the size of a hall, so each type has its own range.
+        static bool Fits(RoomKind kind, int width)
         {
             switch (kind)
             {
-                case RoomKind.Kitchen:
+                case RoomKind.Corridor: return width >= 12;
+                case RoomKind.Dorm: return width >= 10 && width <= 14;
+                case RoomKind.Kitchen: return width >= MinRoomWidth && width <= 15;
                 case RoomKind.Shower:
-                case RoomKind.Laundry: return MinRoomWidth;
-                case RoomKind.Corridor: return 12;
-                default: return 10;
+                case RoomKind.Laundry: return width >= MinRoomWidth && width <= 12;
+                case RoomKind.Storage: return width >= 10 && width <= 12;
+                case RoomKind.Study: return width >= 10 && width <= 16;
+                default: return width >= 10 && width <= 18;
             }
         }
 
@@ -338,7 +355,7 @@ namespace Candlewick
                 else if (roll < 0.92f) kind = RoomKind.Lounge;
                 else if (roll < 0.97f) kind = RoomKind.Laundry;
                 else kind = RoomKind.Storage;
-                if (width >= MinWidthFor(kind)) return kind;
+                if (Fits(kind, width)) return kind;
             }
         }
 

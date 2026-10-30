@@ -6,7 +6,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace Candlewick
 {
-    public enum GameState { Title, Intro, Playing, Choosing, Sunrise, Dying, GameOver }
+    public enum GameState { Title, Intro, Playing, Paused, Choosing, Sunrise, Dying, GameOver }
 
     /// <summary>Owns the run: game state, the dungeon, every live entity, and the per-frame update order.</summary>
     public class GameManager : MonoBehaviour
@@ -17,6 +17,7 @@ namespace Candlewick
         static readonly int[] CandlesByDay = { 7, 7, 6, 6, 5 };
         static readonly float[] SecondsByDay = { 180f, 210f, 240f, 270f, 300f };
         const int MaxGhosts = 5;
+        const float MenuCameraSize = 13f, PlayCameraSize = 8.5f;
         const float ShadowClearRange = 6f; // A candle can only be lit with no enemy this close to it.
         const float DawnRushSeconds = 6f; // How long the sun takes to rise once no souls are left.
         const float DawnStarts = 0.75f; // The fraction of the night after which the sky begins to lighten.
@@ -65,6 +66,9 @@ namespace Candlewick
         Light2D globalLight;
         float dawnRushRate;
         SunrayIntro intro;
+        GameState stateBeforePause;
+        Light2D menuLight;
+        float menuTime;
         readonly List<Palette> weekPalettes = new List<Palette>();
         Palette Today => weekPalettes[Day - 1];
         GameHud hud;
@@ -79,10 +83,7 @@ namespace Candlewick
             hud.Build(this);
             SetUpCamera();
             SetUpDarkness();
-            ShufflePalettes();
-            BuildNight();
-            Player.Wax = Player.MaxWax;
-            hud.ShowTitle();
+            EnterMenu();
         }
 
         void SetUpCamera()
@@ -219,6 +220,11 @@ namespace Candlewick
 
             switch (State)
             {
+                case GameState.Title:
+                    TickMenu(dt);
+                    break;
+                case GameState.Paused:
+                    break;
                 case GameState.Intro:
                     TickIntro(dt);
                     break;
@@ -243,10 +249,90 @@ namespace Candlewick
         {
             var kb = Keyboard.current;
             if (kb == null) return;
+            if (kb.escapeKey.wasPressedThisFrame)
+            {
+                if (hud.CloseSubMenu()) return;
+                if (State == GameState.Playing || State == GameState.Intro) Pause();
+                else if (State == GameState.Paused) Resume();
+                return;
+            }
+            if (hud.InSubMenu) return;
             bool confirm = kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame;
             if (!confirm) return;
             if (State == GameState.Title || State == GameState.GameOver) StartRun();
             else if (State == GameState.Sunrise) AfterSunrise();
+        }
+
+        // The menu shows a real dormitory at dusk, with the camera drifting slowly along it.
+        void EnterMenu()
+        {
+            Day = 1;
+            Buffs = new BuffSet();
+            Player = null;
+            intro = null;
+            ShufflePalettes();
+            BuildNight();
+            Player.SetPresence(0f);
+            cam.orthographicSize = MenuCameraSize;
+            Map.SetSkyTint(Color.Lerp(Today.NightSky, DawnSky, 0.45f));
+            if (globalLight != null)
+            {
+                globalLight.color = Color.Lerp(Today.Ambient, new Color(1f, 0.72f, 0.5f), 0.4f);
+                globalLight.intensity = 0.22f;
+            }
+            var lightObject = new GameObject("MenuLight");
+            lightObject.transform.SetParent(WorldRoot, false);
+            menuLight = Art.AddLight(lightObject, new Color(1f, 0.7f, 0.42f), 26f, 0.75f);
+            menuTime = Random.value * 100f;
+            State = GameState.Title;
+            hud.ShowTitle();
+        }
+
+        void TickMenu(float dt)
+        {
+            menuTime += dt;
+            float margin = cam.orthographicSize * cam.aspect;
+            float span = Mathf.Max(0f, Map.Width - margin * 2f);
+            float x = margin + span * Mathf.PingPong(menuTime * 0.012f, 1f);
+            float y = Map.Height * 0.45f;
+            cam.transform.position = new Vector3(x, y, -10f);
+            // The last light lingers on the right, clear of the menu.
+            menuLight.transform.position = new Vector3(x + margin * 0.3f, y, 0f);
+            menuLight.intensity = 0.72f + Mathf.PerlinNoise(menuTime * 0.8f, 2f) * 0.12f;
+            int order = 0;
+            foreach (var soul in Souls) soul.Tick(dt, order++);
+            Particles.Tick(dt);
+        }
+
+        public void ReturnToMenu()
+        {
+            hud.HidePanels();
+            EnterMenu();
+        }
+
+        public void Pause()
+        {
+            stateBeforePause = State;
+            State = GameState.Paused;
+            hud.HidePanels();
+            hud.ShowPause();
+        }
+
+        public void Resume()
+        {
+            if (State != GameState.Paused) return;
+            State = stateBeforePause;
+            hud.HidePanels();
+            if (State == GameState.Intro) hud.ShowDayCard();
+        }
+
+        public void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         void TickIntro(float dt)
@@ -685,6 +771,7 @@ namespace Candlewick
             TotalSaved = 0;
             Day = 1;
             ShufflePalettes();
+            cam.orthographicSize = PlayCameraSize;
             RescuedThisWeek = 0;
             SurvivalTime = 0f;
             Player = null;

@@ -23,12 +23,16 @@ namespace Candlewick
         float toastTime;
         int shownBuffHash = -1;
         List<BuffInfo> currentChoices;
-        System.Action redraw;
+        System.Action redraw, subMenuBack;
+        Font menuFont;
+        Image titleGlow;
+        Sprite menuShade;
 
         public void Build(GameManager manager)
         {
             game = manager;
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            menuFont = Font.CreateDynamicFontFromOSFont(new[] { "Georgia", "Times New Roman", "Arial" }, 64);
 
             var canvasGo = new GameObject("HUD");
             var c = canvasGo.AddComponent<Canvas>();
@@ -111,6 +115,7 @@ namespace Candlewick
         public void Refresh()
         {
             bool inPlay = game.State != GameState.Title && game.State != GameState.Intro;
+            AnimateMenu();
             hudRoot.gameObject.SetActive(inPlay);
             Cursor.visible = game.State != GameState.Playing;
             if (!inPlay) { HandleChoiceKeys(); return; }
@@ -197,6 +202,7 @@ namespace Candlewick
             for (int i = panelRoot.childCount - 1; i >= 0; i--) Destroy(panelRoot.GetChild(i).gameObject);
             currentChoices = null;
             redraw = null;
+            subMenuBack = null;
         }
 
         void ToggleLanguage()
@@ -229,14 +235,93 @@ namespace Candlewick
             Label(card, Loc.T($"Day {game.Day} of {GameManager.DaysInWeek}.  Souls to save: {game.SoulsToday}", $"День {game.Day} з {GameManager.DaysInWeek}.  Душ урятувати: {game.SoulsToday}"), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(1400f, 60f)).color = TextColor;
         }
 
+        // Called from Refresh while the main menu is open: the title's glow breathes like a flame.
+        void AnimateMenu()
+        {
+            if (titleGlow == null) return;
+            float flicker = Mathf.PerlinNoise(Time.time * 1.6f, 4f);
+            titleGlow.color = new Color(1f, 0.55f, 0.18f, 0.2f + flicker * 0.22f);
+        }
+
         public void ShowTitle()
         {
+            HidePanels();
             redraw = ShowTitle;
-            var panel = Panel(1f);
-            Label(panel, "CANDLEWICK", 118, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 330f), new Vector2(1400f, 150f)).color = Art.Flame;
-            Label(panel, Loc.T("You are the last ray of the sunset. Over five working days, save the lost souls of the students.", "Ти останній промінь заходу. За п'ять робочих днів урятуй заблукані душі студентів."), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 235f), new Vector2(1200f, 60f)).color = Muted;
-            AddButton(panel, Loc.T("Start Game", "Почати гру"), new Vector2(0f, 120f), new Vector2(380f, 86f), game.StartRun);
+            var root = Rect("MainMenu", panelRoot);
+            Stretch(root);
+            var shade = root.gameObject.AddComponent<Image>();
+            shade.sprite = MenuShade();
+            shade.color = Color.white;
 
+            titleGlow = Rect("Glow", root).gameObject.AddComponent<Image>();
+            titleGlow.sprite = Art.Soft;
+            titleGlow.raycastTarget = false;
+            Place(titleGlow.rectTransform, new Vector2(0f, 0.5f), new Vector2(-120f, 150f), new Vector2(1300f, 520f));
+
+            var title = Label(root, "CANDLEWICK", 118, TextAnchor.MiddleLeft, new Vector2(0f, 0.5f), new Vector2(130f, 300f), new Vector2(1100f, 150f));
+            title.font = menuFont;
+            title.color = Art.Flame;
+            var shadow = title.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0.45f, 0.14f, 0f, 0.9f);
+            shadow.effectDistance = new Vector2(3f, -4f);
+
+            var subtitle = Label(root, Loc.T("The last ray of the sunset. Five working days. Every soul counts.", "Останній промінь заходу. П'ять робочих днів. Кожна душа важлива."), 32, TextAnchor.UpperLeft, new Vector2(0f, 0.5f), new Vector2(136f, 192f), new Vector2(1000f, 90f));
+            subtitle.font = menuFont;
+            subtitle.color = new Color(0.9f, 0.82f, 0.72f);
+
+            float y = 90f;
+            MenuButton(root, Loc.T("Start Game", "Почати гру"), ref y, game.StartRun);
+            MenuButton(root, Loc.T("How to Play", "Як грати"), ref y, () => OpenHowToPlay(ShowTitle));
+            MenuButton(root, Loc.T("Settings", "Налаштування"), ref y, () => OpenSettings(ShowTitle));
+            MenuButton(root, Loc.T("Quit Game", "Вийти з гри"), ref y, game.QuitGame);
+        }
+
+        // Dark on the left where the menu sits, fading out to show the building on the right.
+        Sprite MenuShade()
+        {
+            if (menuShade != null) return menuShade;
+            const int width = 128;
+            var tex = new Texture2D(width, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int x = 0; x < width; x++)
+            {
+                float a = Mathf.Clamp01(1.05f - x / (width * 0.62f));
+                tex.SetPixel(x, 0, new Color(0.03f, 0.02f, 0.06f, a * a * 0.97f));
+            }
+            tex.Apply();
+            menuShade = Sprite.Create(tex, new Rect(0, 0, width, 1), new Vector2(0.5f, 0.5f));
+            return menuShade;
+        }
+
+        void MenuButton(RectTransform parent, string text, ref float y, UnityEngine.Events.UnityAction onClick)
+        {
+            var rect = Rect("MenuButton", parent);
+            Place(rect, new Vector2(0f, 0.5f), new Vector2(120f, y), new Vector2(520f, 76f));
+            y -= 88f;
+            var image = rect.gameObject.AddComponent<Image>();
+            image.sprite = Art.Square;
+            var button = rect.gameObject.AddComponent<Button>();
+            var colors = button.colors;
+            colors.normalColor = new Color(1f, 1f, 1f, 0.05f);
+            colors.highlightedColor = new Color(1f, 0.66f, 0.28f, 0.4f);
+            colors.pressedColor = new Color(1f, 0.75f, 0.35f, 0.7f);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+            button.onClick.AddListener(onClick);
+            var label = Label(rect, text, 40, TextAnchor.MiddleLeft, new Vector2(0f, 0.5f), new Vector2(28f, 0f), new Vector2(480f, 70f));
+            label.font = menuFont;
+            label.color = new Color(1f, 0.94f, 0.84f);
+        }
+
+        void OpenHowToPlay(System.Action back)
+        {
+            HidePanels();
+            subMenuBack = back;
+            redraw = () => OpenHowToPlay(back);
+            var panel = Panel(0.94f);
+            var heading = Label(panel, Loc.T("How to Play", "Як грати"), 72, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 400f), new Vector2(1200f, 100f));
+            heading.font = menuFont;
+            heading.color = Art.Flame;
             string controls = Loc.T(
                 "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Fire\n" +
                 "<b>Right Click / Shift</b>  Toggle Flare: burns 3 light/s for speed, reach and a wide flame\n" +
@@ -256,10 +341,92 @@ namespace Candlewick
                 "Привиди проходять крізь стіни, забирають душі, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони бояться.\n" +
                 "Що більше світла, то сильніше ти б'єш. Що менше, то швидше бігаєш. Яма коштує 15 світла.\n" +
                 "Зі сходом сонця день закінчується: душі поруч із тобою рятуються, решта лишається заблуканими. Кожен день важчий за попередній.");
-            var help = Label(panel, controls, 28, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(1800f, 400f));
+            var help = Label(panel, controls, 28, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -30f), new Vector2(1800f, 600f));
             help.supportRichText = true;
             help.color = TextColor;
+            AddButton(panel, Loc.T("Back  [Esc]", "Назад  [Esc]"), new Vector2(0f, -400f), new Vector2(400f, 80f), () => CloseSubMenu());
         }
+
+        public void OpenSettings(System.Action back)
+        {
+            HidePanels();
+            subMenuBack = back;
+            redraw = () => OpenSettings(back);
+            var panel = Panel(0.94f);
+            var heading = Label(panel, Loc.T("Settings", "Налаштування"), 72, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(1200f, 100f));
+            heading.font = menuFont;
+            heading.color = Art.Flame;
+
+            Label(panel, Loc.T("Sound", "Звук"), 38, TextAnchor.MiddleRight, new Vector2(0.5f, 0.5f), new Vector2(-470f, 130f), new Vector2(300f, 60f));
+            var percent = Label(panel, "", 34, TextAnchor.MiddleLeft, new Vector2(0.5f, 0.5f), new Vector2(440f, 130f), new Vector2(140f, 60f));
+            VolumeSlider(panel, new Vector2(40f, 130f), percent);
+
+            Label(panel, Loc.T("Language", "Мова"), 38, TextAnchor.MiddleRight, new Vector2(0.5f, 0.5f), new Vector2(-470f, 10f), new Vector2(300f, 60f));
+            AddButton(panel, Loc.T("English", "Українська"), new Vector2(-60f, 10f), new Vector2(420f, 76f), ToggleLanguage);
+
+            AddButton(panel, Loc.T("Back  [Esc]", "Назад  [Esc]"), new Vector2(0f, -170f), new Vector2(400f, 80f), () => CloseSubMenu());
+        }
+
+        void VolumeSlider(RectTransform parent, Vector2 pos, Text percent)
+        {
+            var rect = Rect("Volume", parent);
+            Place(rect, new Vector2(0.5f, 0.5f), pos, new Vector2(620f, 34f));
+            var back = rect.gameObject.AddComponent<Image>();
+            back.sprite = Art.Square;
+            back.color = new Color(0.2f, 0.17f, 0.22f);
+
+            var fillArea = Rect("Fill Area", rect);
+            Stretch(fillArea);
+            var fill = Rect("Fill", fillArea).gameObject.AddComponent<Image>();
+            fill.sprite = Art.Square;
+            fill.color = Art.Flame;
+            fill.rectTransform.sizeDelta = Vector2.zero;
+
+            var handleArea = Rect("Handle Area", rect);
+            Stretch(handleArea);
+            var handle = Rect("Handle", handleArea).gameObject.AddComponent<Image>();
+            handle.sprite = Art.Disk;
+            handle.color = Art.Core;
+            handle.rectTransform.sizeDelta = new Vector2(46f, 46f);
+
+            var slider = rect.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill.rectTransform;
+            slider.handleRect = handle.rectTransform;
+            slider.targetGraphic = handle;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = Sfx.Volume;
+            percent.text = $"{Mathf.RoundToInt(slider.value * 100f)}%";
+            slider.onValueChanged.AddListener(value =>
+            {
+                game.Sound.SetVolume(value);
+                percent.text = $"{Mathf.RoundToInt(value * 100f)}%";
+            });
+        }
+
+        public void ShowPause()
+        {
+            redraw = ShowPause;
+            var panel = Panel(0.72f);
+            var heading = Label(panel, Loc.T("Paused", "Пауза"), 84, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 230f), new Vector2(1000f, 110f));
+            heading.font = menuFont;
+            heading.color = Art.Flame;
+            AddButton(panel, Loc.T("Resume  [Esc]", "Продовжити  [Esc]"), new Vector2(0f, 70f), new Vector2(520f, 84f), game.Resume);
+            AddButton(panel, Loc.T("Settings", "Налаштування"), new Vector2(0f, -30f), new Vector2(520f, 84f), () => OpenSettings(ShowPause));
+            AddButton(panel, Loc.T("Exit to Main Menu", "Вийти в головне меню"), new Vector2(0f, -130f), new Vector2(520f, 84f), game.ReturnToMenu);
+        }
+
+        /// <summary>Goes back from an open sub-menu; returns false when none is open.</summary>
+        public bool CloseSubMenu()
+        {
+            if (subMenuBack == null) return false;
+            var back = subMenuBack;
+            HidePanels();
+            back();
+            return true;
+        }
+
+        public bool InSubMenu => subMenuBack != null;
 
         public void ShowBuffChoice(List<BuffInfo> choices)
         {
@@ -307,6 +474,7 @@ namespace Candlewick
                 ? Loc.T("New week  [Enter]", "Новий тиждень  [Enter]")
                 : Loc.T("Next: ", "Далі: ") + DayName(game.Day + 1) + "  [Enter]";
             AddButton(panel, next, new Vector2(0f, -130f), new Vector2(560f, 86f), game.AfterSunrise);
+            AddButton(panel, Loc.T("Main Menu", "Головне меню"), new Vector2(0f, -225f), new Vector2(560f, 76f), game.ReturnToMenu);
         }
 
         public void ShowGameOver()
@@ -319,6 +487,7 @@ namespace Candlewick
             Label(panel, Loc.T("Survived", "Протримався") + $": {FormatTime(game.SurvivalTime)}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(1000f, 60f)).color = TextColor;
             Label(panel, DayName(game.Day) + "   " + Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
             AddButton(panel, Loc.T("Try Again  [Enter]", "Спробувати ще  [Enter]"), new Vector2(0f, -130f), new Vector2(440f, 86f), game.StartRun);
+            AddButton(panel, Loc.T("Main Menu", "Головне меню"), new Vector2(0f, -225f), new Vector2(440f, 76f), game.ReturnToMenu);
         }
 
         static string FormatTime(float seconds) => $"{Mathf.FloorToInt(seconds / 60f)}:{Mathf.FloorToInt(seconds % 60f):00}";
@@ -333,9 +502,6 @@ namespace Candlewick
             image.sprite = Art.Square;
             image.color = new Color(PanelColor.r, PanelColor.g, PanelColor.b, alpha);
 
-            // Every menu screen offers the switch, named in the language it switches to.
-            var language = AddButton(rect, Loc.T("Українська", "English"), Vector2.zero, new Vector2(260f, 64f), ToggleLanguage);
-            Place(language.GetComponent<RectTransform>(), new Vector2(1f, 0f), new Vector2(-40f, 40f), new Vector2(260f, 64f));
             return rect;
         }
 

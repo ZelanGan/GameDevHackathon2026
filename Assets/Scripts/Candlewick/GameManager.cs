@@ -98,32 +98,32 @@ namespace Candlewick
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
 
-            var order = new List<Room>(Map.Rooms);
-            for (int i = order.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (order[i], order[j]) = (order[j], order[i]);
-            }
-            var start = order[0];
+            // Escape runs from a tower at the top left down to the main gate at the bottom right.
+            var start = Map.StartRoom;
             start.IsStart = true;
             start.Entered = true;
-
-            // The gate takes the room farthest from the start, and the altars the next farthest.
-            order.RemoveAt(0);
-            Map.UpdateFlow(start.Center);
-            order.Sort((a, b) => Map.WalkDistance(b.Center).CompareTo(Map.WalkDistance(a.Center)));
-            foreach (var room in order) room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
-            var gateRoom = order[0];
-            CurrentGate = new Gate(this, new Vector2(gateRoom.Center.x, gateRoom.Rect.yMax - 1.5f));
-            for (int i = 1; i <= CandlesPerFloor; i++)
+            var middle = new List<Room>();
+            foreach (var room in Map.Rooms)
             {
-                Altars.Add(new Altar(this, order[i], order[i].Center + Vector2.up * 0.5f));
-                order[i].WavesLeft += 1;
+                if (room == start) continue;
+                // There are many rooms now, so only some of the empty ones hold enemies.
+                if (Random.value < 0.5f) room.WavesLeft = 1;
+                if (room != Map.GateRoom) middle.Add(room);
+            }
+            CurrentGate = new Gate(this, Map.GatePos);
+
+            for (int i = 0; i < CandlesPerFloor; i++)
+            {
+                int pick = Random.Range(0, middle.Count);
+                var room = middle[pick];
+                middle.RemoveAt(pick);
+                Altars.Add(new Altar(this, room, room.Stand + Vector2.up * 0.3f));
+                room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
             }
 
             float previousWax = Player != null ? Player.Wax : 100f;
             float previousMax = Player != null ? Player.MaxWax : 100f;
-            Player = new PlayerCandle(this, WorldRoot, start.Center) { MaxWax = previousMax };
+            Player = new PlayerCandle(this, WorldRoot, start.Stand) { MaxWax = previousMax };
             Player.Wax = previousWax;
             Map.UpdateFlow(Player.Pos);
             ambientTimer = 14f;
@@ -449,7 +449,7 @@ namespace Candlewick
             if (checkpoint != null)
             {
                 checkpoint.HasRekindle = false;
-                Player.Revive(checkpoint.Pos + Vector2.down * 1.2f, Player.MaxWax * ReviveFraction);
+                Player.Revive(checkpoint.Pos, Player.MaxWax * ReviveFraction);
                 foreach (var enemy in Enemies)
                     if (Vector2.Distance(enemy.Pos, checkpoint.Pos) < 7f) enemy.Die(false);
                 Enemies.RemoveAll(e => e.Dead);

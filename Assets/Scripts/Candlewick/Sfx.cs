@@ -8,7 +8,7 @@ namespace Candlewick
     {
         const int Rate = 44100;
         AudioSource source, flameSource;
-        AudioClip flare, dim, pickup, extinguish, hit, kill, hurt, light, deny, drone, moan;
+        AudioClip flare, dim, pickup, extinguish, hit, kill, hurt, light, deny, drone, moan, jump;
         float flameTarget;
         readonly System.Random rng = new System.Random(7);
 
@@ -33,6 +33,7 @@ namespace Candlewick
             hurt = Clip(0.22f, t => Saw(t, Mathf.Lerp(190f, 70f, t / 0.22f)) * 0.7f * Fade(t, 0.22f));
             light = Clip(1.2f, t => (Sine(t, 392f) + Sine(t, 587f) * 0.7f + Sine(t, 784f) * 0.4f) * 0.35f * Mathf.Min(t * 12f, 1f) * Fade(t, 1.2f));
             deny = Clip(0.18f, t => Square(t, 110f) * 0.4f * Fade(t, 0.18f));
+            jump = Clip(0.14f, t => Sine(t, Mathf.Lerp(260f, 620f, t / 0.14f)) * 0.5f * Fade(t, 0.14f));
             moan = Clip(1.6f, t => (Sine(t, 240f - t * 60f + 8f * Sine(t, 5f)) + 0.4f * Sine(t, 362f - t * 90f)) * 0.45f * Mathf.Sin(Mathf.PI * t / 1.6f));
             drone = Clip(8f, t => (Sine(t, 55f) + Sine(t, 82.5f) * 0.5f) * (0.75f + 0.25f * Mathf.Sin(2f * Mathf.PI * t / 8f)) * 0.5f);
 
@@ -63,6 +64,7 @@ namespace Candlewick
         public void Light() => source.PlayOneShot(light, 0.7f);
         public void Deny() => source.PlayOneShot(deny, 0.5f);
         public void Moan() => source.PlayOneShot(moan, 0.6f);
+        public void Jump() => source.PlayOneShot(jump, 0.35f);
 
         AudioClip Clip(float seconds, Func<float, float> wave)
         {

@@ -9,7 +9,9 @@ namespace Candlewick
     /// <summary>The player: wax is health, and the flame mode trades wax for light, speed and firepower.</summary>
     public class PlayerCandle
     {
-        const float Radius = 0.34f, BodyHeight = 1.15f, ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
+        public const float Gravity = 28f, JumpSpeed = 14f, Radius = 0.34f, NormalSpeed = 5f;
+        const float BodyHeight = 1.15f, ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
+        const float CoyoteTime = 0.1f, JumpBuffer = 0.12f, MaxFallSpeed = 22f, DropThroughTime = 0.25f, PitWaxCost = 15f;
 
         public Vector2 Pos;
         public float Wax, MaxWax = 100f;
@@ -26,15 +28,18 @@ namespace Candlewick
         readonly SpriteRenderer bodySprite, flameSprite, haloSprite, auraSprite, arrowSprite;
         readonly Light2D glow, streamGlow;
         float fireCooldown, grace, hurtFlash, emberTimer, healMoteTimer, lightRadius = 8f;
+        float verticalSpeed, sinceGrounded, jumpQueued, dropping;
+        bool grounded, jumpHeld;
+        Vector2 lastSafe;
 
         public PlayerCandle(GameManager game, Transform parent, Vector2 pos)
         {
             this.game = game;
-            Pos = pos;
+            Pos = lastSafe = pos;
             Wax = MaxWax;
             root = new GameObject("Player");
             root.transform.SetParent(parent, false);
-            Art.Spr("Pool", root.transform, Art.Disk, Art.Glow, new Color(0.72f, 0.62f, 0.48f), 11, 0.8f).transform.localPosition = new Vector3(0f, -0.42f, 0f);
+            Art.Spr("Pool", root.transform, Art.Disk, Art.Glow, new Color(0.72f, 0.62f, 0.48f), 11, 0.8f).transform.localPosition = new Vector3(0f, -Radius + 0.04f, 0f);
             var pool = root.transform.GetChild(0);
             pool.localScale = new Vector3(0.85f, 0.3f, 1f);
             body = Art.Spr("Body", root.transform, Art.Square, Art.Glow, Art.Wax, 12).transform;
@@ -70,20 +75,22 @@ namespace Candlewick
         {
             var kb = Keyboard.current;
             var mouse = Mouse.current;
-            Vector2 move = Vector2.zero;
+            float move = 0f;
+            bool jumpDown = false;
+            jumpHeld = false;
             if (kb != null)
             {
-                if (kb.wKey.isPressed) move.y += 1f;
-                if (kb.sKey.isPressed) move.y -= 1f;
-                if (kb.dKey.isPressed) move.x += 1f;
-                if (kb.aKey.isPressed) move.x -= 1f;
+                if (kb.dKey.isPressed) move += 1f;
+                if (kb.aKey.isPressed) move -= 1f;
+                jumpDown = kb.wKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
+                jumpHeld = kb.wKey.isPressed || kb.spaceKey.isPressed;
+                if (kb.sKey.wasPressedThisFrame) dropping = DropThroughTime;
                 if (kb.leftShiftKey.wasPressedThisFrame || kb.rightShiftKey.wasPressedThisFrame) ToggleFlare();
-                if (kb.qKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame) ToggleDim();
+                if (kb.qKey.wasPressedThisFrame) ToggleDim();
                 if (kb.eKey.wasPressedThisFrame) game.Interact();
             }
-            if (move.sqrMagnitude > 1f) move.Normalize();
-            float speed = EffectiveMode == FlameMode.Flare ? 7.5f : EffectiveMode == FlameMode.Dim ? 3.4f : 5f;
-            Pos = game.Map.Move(Pos, move * speed * dt, Radius);
+            float speed = EffectiveMode == FlameMode.Flare ? 7.5f : EffectiveMode == FlameMode.Dim ? 3.4f : NormalSpeed;
+            MoveBody(move * speed, jumpDown, dt);
 
             bool firing = false;
             if (mouse != null)
@@ -104,6 +111,42 @@ namespace Candlewick
             else
                 fireCooldown = Mathf.Max(fireCooldown, 0f);
             UpdateStream(firing, dt);
+        }
+
+        void MoveBody(float runSpeed, bool jumpDown, float dt)
+        {
+            sinceGrounded = grounded ? 0f : sinceGrounded + dt;
+            jumpQueued = jumpDown ? JumpBuffer : jumpQueued - dt;
+            dropping -= dt;
+
+            // Coyote time and a jump buffer forgive presses that come slightly early or late.
+            if (jumpQueued > 0f && sinceGrounded < CoyoteTime)
+            {
+                verticalSpeed = JumpSpeed;
+                jumpQueued = 0f;
+                sinceGrounded = CoyoteTime;
+                game.Sound.Jump();
+                game.Particles.Burst(Pos + Vector2.down * Radius, 5, Art.WaxDark, 1.5f);
+            }
+            // Letting go early cuts the jump short.
+            if (!jumpHeld && verticalSpeed > 5f) verticalSpeed = 5f;
+
+            verticalSpeed = Mathf.Max(verticalSpeed - Gravity * dt, -MaxFallSpeed);
+            Pos = game.Map.MoveWalker(Pos, new Vector2(runSpeed * dt, verticalSpeed * dt), Radius, dropping > 0f, out grounded, out bool bumped);
+            if (grounded || bumped) verticalSpeed = 0f;
+            if (Pos.y < DungeonMap.KillY) FallInPit();
+            else if (grounded) lastSafe = Pos;
+        }
+
+        void FallInPit()
+        {
+            ChangeWax(-PitWaxCost * game.Buffs.DamageTakenMultiplier);
+            Pos = lastSafe;
+            verticalSpeed = 0f;
+            grace = ContactGrace * 2f;
+            game.Shake(0.3f);
+            game.Sound.Hurt();
+            game.Particles.Burst(Pos, 12, Art.Gloom, 3f);
         }
 
         // Lights the area the stream covers and drives the roar of the flame.
@@ -203,9 +246,9 @@ namespace Candlewick
             float height = Mathf.Lerp(0.14f, BodyHeight, fraction);
             float width = 0.42f + (1f - fraction) * 0.1f;
             body.localScale = new Vector3(width, height, 1f);
-            body.localPosition = new Vector3(0f, -0.42f + height / 2f, 0f);
+            body.localPosition = new Vector3(0f, -Radius + height / 2f, 0f);
             bodySprite.color = hurtFlash > 0f ? Art.Blood : Art.Wax;
-            float top = -0.42f + height;
+            float top = -Radius + height;
             wick.localPosition = new Vector3(0f, top + 0.06f, 0f);
 
             float size = mode == FlameMode.Flare ? 1.05f : mode == FlameMode.Dim ? 0.32f : 0.58f;
@@ -275,7 +318,8 @@ namespace Candlewick
 
         public void Revive(Vector2 at, float wax)
         {
-            Pos = at;
+            Pos = lastSafe = at;
+            verticalSpeed = 0f;
             Wax = Mathf.Max(wax, 1f);
             Mode = FlameMode.Normal;
             SnuffedFor = 0f;

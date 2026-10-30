@@ -136,6 +136,7 @@ namespace Candlewick
     /// <summary>Keeps its distance and fires bolts that smother the player's flame.</summary>
     public class GloomSnuffer : Enemy
     {
+        const float HoldMin = 2.5f, HoldMax = 4.2f, FireRange = 7f; // FireRange stays inside the normal light radius.
         float cooldown = Random.Range(1f, 2.2f);
 
         public GloomSnuffer(GameManager game, Vector2 pos, Room home)
@@ -153,14 +154,15 @@ namespace Candlewick
             var target = Game.Player.Pos;
             float d = Vector2.Distance(Pos, target);
             bool sees = Game.Map.LineOfSight(Pos, target);
+            // It keeps just inside the flame's reach and level with the player, so it can always be burned.
             Vector2 dir;
-            if (!sees || d > 8.5f) dir = ChaseDir();
-            else if (d < 5.5f) dir = (Pos - target).normalized;
-            else dir = Vector2.Perpendicular((target - Pos).normalized) * Mathf.Sin(Age * 0.8f);
+            if (!sees || d > HoldMax) dir = ChaseDir();
+            else if (d < HoldMin) dir = (Pos - target).normalized;
+            else dir = new Vector2(Mathf.Sin(Age * 0.8f) * 0.5f, Mathf.Clamp(target.y + 0.8f - Pos.y, -1f, 1f));
             Pos = Game.Map.Move(Pos, dir * 2.6f * dt, Radius);
 
             cooldown -= dt;
-            if (cooldown > 0f || !sees || d > 13f) return;
+            if (cooldown > 0f || !sees || d > FireRange) return;
             cooldown = Mathf.Max(1.3f, 2.3f - 0.15f * Game.Depth);
             Vector2 aim = (target - Pos).normalized;
             int shots = Game.Depth >= 3 ? 3 : 1;
@@ -250,7 +252,9 @@ namespace Candlewick
     /// <summary>Slow, heavy, and leaves a trail of darkness that eats wax.</summary>
     public class NightCreeper : Enemy
     {
-        float trailTimer;
+        const float HopSpeed = 9f;
+        float trailTimer, fallSpeed;
+        bool onGround;
 
         public NightCreeper(GameManager game, Vector2 pos, Room home)
             : base(game, pos, home, "Night Creeper", Art.Creeper, Color.white, 1.9f, 0.72f, 120f)
@@ -264,13 +268,27 @@ namespace Candlewick
 
         protected override void Act(float dt)
         {
-            Pos = Game.Map.Move(Pos, ChaseDir() * 1.55f * dt, Radius);
+            // The only enemy bound to the ground: it walks, hops small steps, and won't walk off a ledge.
+            var map = Game.Map;
+            float direction = Mathf.Sign(Game.Player.Pos.x - Pos.x);
+            if (Mathf.Abs(Game.Player.Pos.x - Pos.x) < 0.2f) direction = 0f;
+            Vector2 ahead = Pos + new Vector2(direction * (Radius + 0.2f), 0f);
+            if (onGround)
+            {
+                if (!map.IsOpen(ahead)) fallSpeed = HopSpeed;
+                else if (!map.IsStandable(ahead + Vector2.down * (Radius + 0.5f))) direction = 0f;
+            }
+            fallSpeed -= PlayerCandle.Gravity * dt;
+            Pos = map.MoveWalker(Pos, new Vector2(direction * 1.55f * dt, fallSpeed * dt), Radius, false, out onGround, out bool bumped);
+            if (onGround || bumped) fallSpeed = 0f;
+            if (Pos.y < DungeonMap.KillY) { Die(false); return; }
+
             float pulse = 1.9f + Mathf.Sin(Age * 2.4f) * 0.08f;
             Sprite.transform.localScale = new Vector3(pulse, 3.8f - pulse, 1f);
             trailTimer -= dt;
             if (trailTimer > 0f) return;
             trailTimer = 0.45f;
-            Game.SpawnTrail(Pos);
+            if (onGround) Game.SpawnTrail(Pos + Vector2.down * (Radius - 0.12f));
         }
     }
 }

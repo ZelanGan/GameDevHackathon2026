@@ -17,7 +17,7 @@ namespace Candlewick
         public static readonly Color Gloom = new Color(0.32f, 0.12f, 0.5f);
 
         public static Material Lit, Glow;
-        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Floor, FloorAlt, WallTop, WallFace, Arrow;
+        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Floor, FloorAlt, WallTop, WallFace, Plank, Sky, SkyStars, Window, Banner, Pillar, Arrow;
 
         public static void Init()
         {
@@ -37,10 +37,17 @@ namespace Candlewick
             Ghost = Make(64, GhostShape);
             Arrow = Make(32, (x, y) => White(Edge(0.85f - (Mathf.Abs(y) * 1.6f + Mathf.Abs(x)), 0.08f)));
 
-            Floor = Tile(new Color(0.3f, 0.28f, 0.38f), 0.035f, 11, false);
-            FloorAlt = Tile(new Color(0.25f, 0.23f, 0.33f), 0.035f, 29, false);
-            WallTop = Tile(new Color(0.05f, 0.045f, 0.08f), 0.008f, 47, false);
-            WallFace = Tile(new Color(0.42f, 0.34f, 0.5f), 0.05f, 71, true);
+            // Side view: Floor is the castle wall behind the action, WallTop is solid rock, WallFace a walkable ledge.
+            Floor = Tile(new Color(0.2f, 0.18f, 0.27f), 0.03f, 11, true);
+            FloorAlt = Tile(new Color(0.17f, 0.15f, 0.24f), 0.03f, 29, true);
+            WallTop = Tile(new Color(0.06f, 0.05f, 0.09f), 0.01f, 47, false);
+            WallFace = Tile(new Color(0.62f, 0.52f, 0.66f), 0.06f, 71, false);
+            Plank = PlankTile();
+            Sky = Tile(new Color(0.03f, 0.04f, 0.11f), 0.004f, 83, false, false);
+            SkyStars = Tile(new Color(0.03f, 0.04f, 0.11f), 0.004f, 97, false, true);
+            Window = Make(32, WindowShape);
+            Banner = Make(32, BannerShape);
+            Pillar = Make(32, PillarShape);
         }
 
         public static GameObject Spr(string name, Transform parent, Sprite sprite, Material mat, Color color, int order, float scale = 1f)
@@ -85,7 +92,36 @@ namespace Candlewick
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
-        static Sprite Tile(Color baseColor, float noise, int seed, bool brickLines)
+        static Color WindowShape(float x, float y)
+        {
+            // Arched top over a straight body, split by a stone mullion.
+            float body = y < 0.3f ? 0.8f - Mathf.Abs(x) : 0.8f - Mathf.Sqrt(x * x + (y - 0.3f) * (y - 0.3f) * 1.8f);
+            float d = Mathf.Min(body, y + 0.95f);
+            Color c = Mathf.Abs(x) < 0.07f || Mathf.Abs(y + 0.25f) < 0.05f ? new Color(0.1f, 0.1f, 0.18f) : Color.white;
+            c.a = Edge(d, 0.05f);
+            return c;
+        }
+
+        static Color BannerShape(float x, float y)
+        {
+            // Hanging cloth ending in a swallowtail, with a pale stripe.
+            float bottom = -1f + 0.55f * (1f - Mathf.Abs(x) / 0.7f);
+            float d = Mathf.Min(0.7f - Mathf.Abs(x), Mathf.Min(0.95f - y, bottom < y ? y - bottom : -1f));
+            Color c = Mathf.Abs(y - 0.55f) < 0.08f ? new Color(1f, 0.9f, 0.5f) : Color.white;
+            c.a = Edge(d, 0.05f);
+            return c;
+        }
+
+        static Color PillarShape(float x, float y)
+        {
+            // A fluted shaft between a wider capital and base.
+            bool capital = Mathf.Abs(y) > 0.9f;
+            float halfWidth = capital ? 0.95f : 0.62f;
+            float shade = capital ? 0.42f : 0.26f + 0.08f * Mathf.Cos(x * 14f);
+            return new Color(shade, shade * 0.95f, shade * 1.15f, Edge(halfWidth - Mathf.Abs(x), 0.05f));
+        }
+
+        static Sprite Tile(Color baseColor, float noise, int seed, bool brickLines, bool star = false)
         {
             var rng = new System.Random(seed);
             const int size = 16;
@@ -96,8 +132,28 @@ namespace Candlewick
                     float n = ((float)rng.NextDouble() - 0.5f) * noise * 2f;
                     Color c = baseColor + new Color(n, n, n, 0f);
                     if (brickLines && (y % 5 == 0 || (x + (y / 5) * 6) % 12 == 0)) c *= 0.55f;
-                    if (!brickLines && (x == 0 || y == 0)) c *= 0.82f;
+                    if (!brickLines && !star && (x == 0 || y == 0)) c *= 0.82f;
+                    if (star && x == 7 && y == 9) c = new Color(0.85f, 0.88f, 1f);
                     c.a = 1f;
+                    tex.SetPixel(x, y, c);
+                }
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        // A thin wooden board along the top of its cell, so the wall behind stays visible.
+        static Sprite PlankTile()
+        {
+            const int size = 16, thickness = 5;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    bool board = y >= size - thickness;
+                    Color c = new Color(0.72f, 0.48f, 0.28f);
+                    if (y == size - 1) c = new Color(0.9f, 0.68f, 0.42f);
+                    if (y == size - thickness || x == 0) c *= 0.55f;
+                    c.a = board ? 1f : 0f;
                     tex.SetPixel(x, y, c);
                 }
             tex.Apply();

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Candlewick
 {
-    /// <summary>Draws a schematic of a generated castle in the editor, without entering Play mode or touching the scene.</summary>
+    /// <summary>Draws a schematic of a generated dormitory in the editor, without entering Play mode or touching the scene.</summary>
     public class MapPreviewWindow : EditorWindow
     {
         static readonly Color Solid = new Color(0.12f, 0.11f, 0.16f);
@@ -12,7 +12,6 @@ namespace Candlewick
         static readonly Color Plank = new Color(0.9f, 0.6f, 0.25f);
         static readonly Color Pit = new Color(0.55f, 0.1f, 0.7f);
         static readonly Color StartMark = new Color(0.25f, 0.95f, 0.35f);
-        static readonly Color GateMark = new Color(0.3f, 0.9f, 1f);
         static readonly Color CandleSpot = new Color(1f, 0.85f, 0.2f);
 
         int floor = 1, seed;
@@ -52,8 +51,7 @@ namespace Candlewick
             using (new EditorGUILayout.HorizontalScope())
             {
                 Legend("Start", StartMark);
-                Legend("Gate", GateMark);
-                Legend("Candle spot", CandleSpot);
+                Legend("Candle or soul spot", CandleSpot);
                 Legend("Planks", Plank);
                 Legend("Pit", Pit);
                 Legend("Rampart", Rampart);
@@ -92,9 +90,8 @@ namespace Candlewick
                     preview.SetPixel(x, y, CellColor(x, y));
 
             foreach (var room in map.Rooms)
-                if (room != map.StartRoom && room != map.GateRoom) Mark(room.Stand, CandleSpot);
+                if (room != map.StartRoom) Mark(room.Stand, CandleSpot);
             Mark(map.StartRoom.Stand, StartMark);
-            Mark(map.GatePos, GateMark);
             preview.Apply();
         }
 

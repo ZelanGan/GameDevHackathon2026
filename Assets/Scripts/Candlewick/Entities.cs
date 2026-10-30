@@ -244,77 +244,81 @@ namespace Candlewick
     }
 
     /// <summary>
-    /// A small candle locked in a cage. Once freed it floats after the player, brightening the light,
-    /// until it reaches the gate and counts as rescued, or a ghost snuffs it out.
+    /// The lost soul of a student. Once gathered it floats after the player, brightening the light,
+    /// until it reaches a lit candle and rises free, or a ghost takes it.
     /// </summary>
-    public class Captive
+    public class Soul
     {
-        public const float FreeRange = 1.9f;
-        const float BodyRadius = 0.22f, FollowSpeed = 5.5f, CatchUpSpeed = 9f, CatchUpDistance = 6f, LostDistance = 24f;
+        public const float GatherRange = 1.9f;
+        const float BodyRadius = 0.22f, FollowSpeed = 5.5f, CatchUpSpeed = 9f, CatchUpDistance = 6f, LostDistance = 24f, RiseTime = 1.4f;
 
-        public enum Status { Caged, Following, Gone }
+        public enum Status { Lost, Following, Saved, Gone }
 
         public Vector2 Pos { get; private set; }
-        public Status State { get; private set; } = Status.Caged;
-        public readonly Room Room;
+        public Status State { get; private set; } = Status.Lost;
 
         readonly GameManager game;
         readonly GameObject root;
-        readonly Transform cage;
-        readonly SpriteRenderer flame;
-        float age;
+        readonly SpriteRenderer body, halo;
+        float age, rising;
 
-        public Captive(GameManager game, Room room, Vector2 pos)
+        public Soul(GameManager game, Vector2 pos)
         {
             this.game = game;
-            Room = room;
             Pos = pos;
-            root = new GameObject("Captive");
+            root = new GameObject("Soul");
             root.transform.SetParent(game.WorldRoot, false);
             root.transform.localPosition = pos;
-            var body = Art.Spr("Body", root.transform, Art.Square, Art.Glow, Art.Wax, 9);
-            body.transform.localScale = new Vector3(0.24f, 0.5f, 1f);
-            flame = Art.Spr("Flame", root.transform, Art.Soft, Art.Glow, new Color(0.7f, 0.85f, 1f, 0.8f), 10, 0.45f).GetComponent<SpriteRenderer>();
-            flame.transform.localPosition = new Vector3(0f, 0.38f, 0f);
-
-            cage = new GameObject("Cage").transform;
-            cage.SetParent(root.transform, false);
-            for (int i = -2; i <= 2; i++) Bar(new Vector3(i * 0.32f, 0.2f, 0f), new Vector3(0.06f, 1.5f, 1f));
-            Bar(new Vector3(0f, 0.95f, 0f), new Vector3(1.4f, 0.1f, 1f));
-            Bar(new Vector3(0f, -0.55f, 0f), new Vector3(1.4f, 0.1f, 1f));
-        }
-
-        void Bar(Vector3 position, Vector3 scale)
-        {
-            var bar = Art.Spr("Bar", cage, Art.Square, Art.Glow, new Color(0.55f, 0.52f, 0.62f), 11);
-            bar.transform.localPosition = position;
-            bar.transform.localScale = scale;
+            halo = Art.Spr("Halo", root.transform, Art.Soft, Art.Glow, new Color(0.6f, 0.82f, 1f, 0.35f), 9, 2.4f).GetComponent<SpriteRenderer>();
+            body = Art.Spr("Body", root.transform, Art.Soul, Art.Glow, new Color(1f, 1f, 1f, 0.85f), 10, 0.95f).GetComponent<SpriteRenderer>();
         }
 
         public void Tick(float dt, int followOrder)
         {
             if (State == Status.Gone) return;
             age += dt;
-            flame.transform.localScale = Vector3.one * (0.42f + 0.08f * Mathf.Sin(age * 11f));
-            if (State == Status.Caged) return;
 
-            var map = game.Map;
-            Vector2 target = game.Player.Pos;
-            float distance = Vector2.Distance(Pos, target);
-            if (distance > LostDistance) Pos = target;
-            else if (distance > 1.1f + followOrder * 0.7f)
+            if (State == Status.Saved)
             {
-                Vector2 dir = map.LineOfSight(Pos, target) ? (target - Pos).normalized : map.FlowDir(Pos);
-                Pos = map.Move(Pos, dir * (distance > CatchUpDistance ? CatchUpSpeed : FollowSpeed) * dt, BodyRadius);
+                rising += dt;
+                Pos += Vector2.up * 2.5f * dt;
+                float fade = 1f - rising / RiseTime;
+                body.color = new Color(1f, 1f, 1f, fade);
+                halo.color = new Color(1f, 0.85f, 0.55f, 0.5f * fade);
+                root.transform.localPosition = Pos;
+                if (rising >= RiseTime)
+                {
+                    State = Status.Gone;
+                    Object.Destroy(root);
+                }
+                return;
             }
-            root.transform.localPosition = Pos + Vector2.up * Mathf.Sin(age * 3f + followOrder) * 0.08f;
+
+            if (State == Status.Following)
+            {
+                var map = game.Map;
+                Vector2 target = game.Player.Pos;
+                float distance = Vector2.Distance(Pos, target);
+                if (distance > LostDistance) Pos = target;
+                else if (distance > 1.1f + followOrder * 0.7f)
+                {
+                    Vector2 dir = map.LineOfSight(Pos, target) ? (target - Pos).normalized : map.FlowDir(Pos);
+                    Pos = map.Move(Pos, dir * (distance > CatchUpDistance ? CatchUpSpeed : FollowSpeed) * dt, BodyRadius);
+                }
+            }
+            root.transform.localPosition = Pos + Vector2.up * Mathf.Sin(age * 2.4f + followOrder) * 0.14f;
         }
 
-        public void Free()
+        public void Gather()
         {
             State = Status.Following;
-            Object.Destroy(cage.gameObject);
-            flame.color = Art.Core;
+            halo.color = new Color(1f, 0.88f, 0.6f, 0.45f);
+        }
+
+        public void Save()
+        {
+            State = Status.Saved;
+            game.Particles.Burst(Pos, 18, Art.Core, 3f);
         }
 
         public void JoinPlayer() => Pos = game.Player.Pos;
@@ -327,52 +331,151 @@ namespace Candlewick
         }
     }
 
-    /// <summary>The way out of the current floor. Sealed until enough candles burn.</summary>
-    public class Gate
+    /// <summary>
+    /// The opening of a night: the last ray of the sunset slants through a dorm window,
+    /// gathers on the floor, and the child steps out of the light.
+    /// </summary>
+    public class SunrayIntro
     {
-        public const float InteractRange = 2.2f;
-        public readonly Vector2 Pos;
-        public bool IsOpen { get; private set; }
+        const float ReachEnd = 1.1f, GatherEnd = 2.3f, AppearEnd = 2.9f, FadeEnd = 3.6f, SkipAfter = 0.25f;
+        static readonly Color RayColor = new Color(1f, 0.66f, 0.3f);
 
-        readonly SpriteRenderer portal, halo;
+        readonly GameManager game;
+        readonly Vector2 window, landing;
+        readonly Transform root, beam, core;
+        readonly SpriteRenderer beamSprite, coreSprite, glowSprite;
         readonly Light2D light;
-        float pulse;
+        float time, moteTimer;
+        bool appeared;
 
-        public Gate(GameManager game, Vector2 pos)
+        public SunrayIntro(GameManager game, Vector2 window, Vector2 landing)
         {
-            Pos = pos;
-            var root = new GameObject("Gate");
-            root.transform.SetParent(game.WorldRoot, false);
-            root.transform.localPosition = pos;
-            var frame = Art.Spr("Frame", root.transform, Art.Square, Art.Lit, new Color(0.62f, 0.55f, 0.68f), 4);
-            frame.transform.localScale = new Vector3(2.6f, 3f, 1f);
-            portal = Art.Spr("Portal", root.transform, Art.Square, Art.Glow, new Color(0.03f, 0.02f, 0.06f), 5).GetComponent<SpriteRenderer>();
-            portal.transform.localScale = new Vector3(1.9f, 2.5f, 1f);
-            portal.transform.localPosition = new Vector3(0f, -0.25f, 0f);
-            halo = Art.Spr("Halo", root.transform, Art.Soft, Art.Glow, new Color(0.65f, 0.55f, 0.9f, 0.25f), 3, 5f).GetComponent<SpriteRenderer>();
-            light = Art.AddLight(root, new Color(0.7f, 0.82f, 1f), 7f, 1.2f);
-            light.enabled = false;
+            this.game = game;
+            this.window = window;
+            this.landing = landing;
+            root = new GameObject("SunrayIntro").transform;
+            root.SetParent(game.WorldRoot, false);
+            beam = Art.Spr("Beam", root, Art.Soft, Art.Glow, Color.clear, 18).transform;
+            beamSprite = beam.GetComponent<SpriteRenderer>();
+            core = Art.Spr("Core", root, Art.Square, Art.Glow, Color.clear, 19).transform;
+            coreSprite = core.GetComponent<SpriteRenderer>();
+            glowSprite = Art.Spr("WindowGlow", root, Art.Soft, Art.Glow, Color.clear, 17, 4f).GetComponent<SpriteRenderer>();
+            glowSprite.transform.localPosition = window;
+            var lightObject = new GameObject("RayLight");
+            lightObject.transform.SetParent(root, false);
+            lightObject.transform.localPosition = landing;
+            light = Art.AddLight(lightObject, new Color(1f, 0.68f, 0.38f), 1f, 0f);
+            game.Player.SetPresence(0f);
+            game.Sound.Flare();
+        }
+
+        public bool CanSkip => time > SkipAfter;
+        public void Skip() => time = Mathf.Max(time, AppearEnd);
+
+        /// <summary>Plays one frame; returns true once the intro is over.</summary>
+        public bool Tick(float dt)
+        {
+            time += dt;
+
+            // The ray grows down from the window to the floor, then holds.
+            float reach = Mathf.SmoothStep(0f, 1f, time / ReachEnd);
+            float fade = 1f - Mathf.Clamp01((time - AppearEnd) / (FadeEnd - AppearEnd));
+            Vector2 tip = Vector2.Lerp(window, landing + Vector2.down * 0.3f, reach);
+            Vector2 span = tip - window;
+            float length = Mathf.Max(span.magnitude, 0.01f);
+            float angle = Mathf.Atan2(span.y, span.x) * Mathf.Rad2Deg - 90f;
+            float pulse = 1f + 0.08f * Mathf.Sin(time * 14f);
+            float swell = Mathf.Lerp(1f, 1.6f, Mathf.Clamp01((time - ReachEnd) / (GatherEnd - ReachEnd)));
+
+            beam.localPosition = window + span / 2f;
+            beam.localRotation = Quaternion.Euler(0f, 0f, angle);
+            beam.localScale = new Vector3(2.8f * swell * pulse, length * 1.25f, 1f);
+            beamSprite.color = new Color(RayColor.r, RayColor.g, RayColor.b, 0.85f * fade);
+            core.localPosition = beam.localPosition;
+            core.localRotation = beam.localRotation;
+            core.localScale = new Vector3(0.16f * swell * pulse, length, 1f);
+            coreSprite.color = new Color(1f, 0.92f, 0.65f, fade);
+            glowSprite.color = new Color(1f, 0.6f, 0.25f, 0.7f * fade * Mathf.Clamp01(time * 2f));
+
+            light.pointLightOuterRadius = Mathf.Lerp(1f, 7f, reach);
+            light.pointLightInnerRadius = light.pointLightOuterRadius * 0.2f;
+            light.intensity = 1.5f * fade * reach;
+
+            // Motes drift down the ray and pile up where it lands.
+            moteTimer -= dt;
+            if (moteTimer <= 0f && time < AppearEnd)
+            {
+                moteTimer = 0.03f;
+                Vector2 at = Vector2.Lerp(window, tip, Random.value) + Random.insideUnitCircle * 0.25f;
+                game.Particles.Emit(at, span.normalized * Random.Range(1f, 3f) + Random.insideUnitCircle * 0.4f, Art.Core, Random.Range(0.08f, 0.18f), Random.Range(0.4f, 0.8f));
+            }
+
+            // The child takes shape in a burst of light.
+            if (time >= GatherEnd && !appeared)
+            {
+                appeared = true;
+                game.Sound.Light();
+                game.Shake(0.15f);
+                game.Particles.Burst(landing, 40, Art.Core, 5f);
+            }
+            game.Player.SetPresence(Mathf.SmoothStep(0f, 1f, (time - GatherEnd) / (AppearEnd - GatherEnd)));
+
+            if (time < FadeEnd) return false;
+            Object.Destroy(root.gameObject);
+            return true;
+        }
+    }
+
+    /// <summary>A door in a doorway. It swings open when anyone comes near; it never blocks movement.</summary>
+    public class RoomDoor
+    {
+        const float OpenRange = 2.4f, OpenSpeed = 7f, Height = 3f, Width = 2f, OpenWidth = 0.3f;
+
+        readonly GameManager game;
+        readonly Vector2 spot;
+        readonly Transform panel;
+        readonly float nativeWidth;
+        float openness;
+        bool wasOpen;
+
+        public RoomDoor(GameManager game, Vector2 spot)
+        {
+            this.game = game;
+            this.spot = spot;
+            var sprite = Art.Pillar;
+            nativeWidth = sprite.bounds.size.x;
+            var go = Art.Spr("Door", game.WorldRoot, sprite, Art.Lit, Color.white, 8);
+            panel = go.transform;
+            panel.localScale = new Vector3(Width / nativeWidth, Height / sprite.bounds.size.y, 1f);
+            panel.localPosition = new Vector3(spot.x, spot.y + Height / 2f, 0f);
         }
 
         public void Tick(float dt)
         {
-            pulse += dt;
-            float wave = 0.5f + 0.5f * Mathf.Sin(pulse * 3f);
-            if (!IsOpen)
-            {
-                halo.color = new Color(0.65f, 0.55f, 0.9f, 0.12f + 0.12f * wave);
-                return;
-            }
-            halo.color = new Color(0.75f, 0.87f, 1f, 0.45f + 0.25f * wave);
-            light.intensity = 1.1f + 0.3f * wave;
+            bool open = SomeoneNear();
+            openness = Mathf.MoveTowards(openness, open ? 1f : 0f, OpenSpeed * dt);
+            if (open && !wasOpen && Vector2.Distance(game.Player.Pos, spot) < OpenRange + 1f) game.Sound.Door();
+            wasOpen = open;
+
+            // Swings on its left hinge, foreshortening as it opens.
+            float width = Mathf.Lerp(Width, OpenWidth, openness);
+            var scale = panel.localScale;
+            scale.x = width / nativeWidth;
+            panel.localScale = scale;
+            panel.localPosition = new Vector3(spot.x - Width / 2f + width / 2f, spot.y + Height / 2f, 0f);
         }
 
-        public void Open()
+        bool SomeoneNear()
         {
-            IsOpen = true;
-            portal.color = new Color(0.85f, 0.93f, 1f);
-            light.enabled = true;
+            if (Near(game.Player.Pos)) return true;
+            foreach (var soul in game.Souls)
+                if (soul.State == Soul.Status.Following && Near(soul.Pos)) return true;
+            foreach (var enemy in game.Enemies)
+                if (enemy.Solid && Near(enemy.Pos)) return true;
+            return false;
         }
+
+        bool Near(Vector2 p) => Mathf.Abs(p.x - spot.x) < OpenRange && p.y > spot.y - 0.5f && p.y < spot.y + Height + 0.5f;
     }
 
     /// <summary>Pooled sprite particles for embers, bursts and smoke.</summary>

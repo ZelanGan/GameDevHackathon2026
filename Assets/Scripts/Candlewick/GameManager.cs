@@ -65,6 +65,8 @@ namespace Candlewick
         Light2D globalLight;
         float dawnRushRate;
         SunrayIntro intro;
+        readonly List<Palette> weekPalettes = new List<Palette>();
+        Palette Today => weekPalettes[Day - 1];
         GameHud hud;
         Vector3 camPos;
         float shake, ambientTimer, dyingTimer, ghostClock;
@@ -77,6 +79,7 @@ namespace Candlewick
             hud.Build(this);
             SetUpCamera();
             SetUpDarkness();
+            ShufflePalettes();
             BuildNight();
             Player.Wax = Player.MaxWax;
             hud.ShowTitle();
@@ -117,10 +120,22 @@ namespace Candlewick
         {
             float night = 1f - NightLeft / SecondsByDay[Day - 1];
             float dawn = Mathf.Clamp01((night - DawnStarts) / (1f - DawnStarts));
-            Map.SetSkyTint(Color.Lerp(DungeonMap.NightSky, DawnSky, dawn));
+            Map.SetSkyTint(Color.Lerp(Today.NightSky, DawnSky, dawn));
             if (globalLight == null) return;
-            globalLight.color = Color.Lerp(new Color(0.35f, 0.38f, 0.72f), new Color(1f, 0.72f, 0.5f), dawn);
+            globalLight.color = Color.Lerp(Today.Ambient, new Color(1f, 0.72f, 0.5f), dawn);
             globalLight.intensity = Mathf.Lerp(0.05f, 0.45f, dawn);
+        }
+
+        // Every day of a week gets its own colours, in a different order each week.
+        void ShufflePalettes()
+        {
+            weekPalettes.Clear();
+            weekPalettes.AddRange(Palette.All);
+            for (int i = weekPalettes.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (weekPalettes[i], weekPalettes[j]) = (weekPalettes[j], weekPalettes[i]);
+            }
         }
 
         void BuildNight()
@@ -128,7 +143,7 @@ namespace Candlewick
             ClearWorld();
             WorldRoot = new GameObject("World").transform;
             Particles = new Particles(WorldRoot);
-            Map = new DungeonMap(Day);
+            Map = new DungeonMap(Day, Today);
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
             foreach (var spot in Map.DoorSpots) doors.Add(new RoomDoor(this, spot));
@@ -669,6 +684,7 @@ namespace Candlewick
             Kills = 0;
             TotalSaved = 0;
             Day = 1;
+            ShufflePalettes();
             RescuedThisWeek = 0;
             SurvivalTime = 0f;
             Player = null;

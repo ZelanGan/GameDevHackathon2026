@@ -6,12 +6,17 @@ namespace Candlewick
 {
     public enum FlameMode { Dim, Normal, Flare }
 
-    /// <summary>The player: wax is health, and the flame mode trades wax for light, speed and firepower.</summary>
+    /// <summary>The last ray of the sun, a glowing child whose cape holds its light (wax), which is also its health: and the flame mode trades wax for light, speed and firepower.</summary>
     public class PlayerCandle
     {
         public const float Gravity = 28f, JumpSpeed = 14f, Radius = 0.34f, NormalSpeed = 5f;
-        const float BodyHeight = 1.15f, ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
+        const float LightPerFollower = 0.12f;
+        const float ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
         const float CoyoteTime = 0.1f, JumpBuffer = 0.12f, MaxFallSpeed = 22f, DropThroughTime = 0.25f, PitWaxCost = 15f;
+
+        // The child's cape stores its light, as in Sky: it shines at full and goes dark as the light runs out.
+        const float FigureScale = 1.3f, ChildCenterY = 0.4f;
+        static readonly Color CapeLit = new Color(1f, 0.82f, 0.4f), CapeSpent = new Color(0.1f, 0.1f, 0.16f);
 
         public Vector2 Pos;
         public float Wax, MaxWax = 100f;
@@ -22,15 +27,22 @@ namespace Candlewick
 
         public FlameMode EffectiveMode => SnuffedFor > 0f ? FlameMode.Dim : Mode;
 
+        // Wax trades power for speed: a full candle hits hard, a stub runs fast.
+        const float MinDamage = 0.5f, MaxDamage = 1.5f, MaxSpeedBonus = 1.4f;
+        float WaxFraction => Mathf.Clamp01(Wax / MaxWax);
+        public float DamageMultiplier => Mathf.Lerp(MinDamage, MaxDamage, WaxFraction);
+        public float SpeedMultiplier => Mathf.Lerp(MaxSpeedBonus, 1f, WaxFraction);
+
         readonly GameManager game;
         readonly GameObject root;
-        readonly Transform body, wick, flame, halo, aura, arrow, crosshair;
-        readonly SpriteRenderer bodySprite, flameSprite, haloSprite, auraSprite, arrowSprite;
+        readonly Transform figure, cape, flame, halo, aura, arrow, soulArrow, crosshair;
+        readonly SpriteRenderer bodySprite, capeSprite, flameSprite, haloSprite, auraSprite, arrowSprite, soulArrowSprite;
         readonly Light2D glow, streamGlow;
         float fireCooldown, grace, hurtFlash, emberTimer, healMoteTimer, lightRadius = 8f;
         float verticalSpeed, sinceGrounded, jumpQueued, dropping;
         bool grounded, jumpHeld;
-        Vector2 lastSafe;
+        Vector2 lastSafe, lastPos;
+        float facing = 1f, stride;
 
         public PlayerCandle(GameManager game, Transform parent, Vector2 pos)
         {
@@ -39,21 +51,25 @@ namespace Candlewick
             Wax = MaxWax;
             root = new GameObject("Player");
             root.transform.SetParent(parent, false);
-            Art.Spr("Pool", root.transform, Art.Disk, Art.Glow, new Color(0.72f, 0.62f, 0.48f), 11, 0.8f).transform.localPosition = new Vector3(0f, -Radius + 0.04f, 0f);
-            var pool = root.transform.GetChild(0);
-            pool.localScale = new Vector3(0.85f, 0.3f, 1f);
-            body = Art.Spr("Body", root.transform, Art.Square, Art.Glow, Art.Wax, 12).transform;
-            bodySprite = body.GetComponent<SpriteRenderer>();
-            wick = Art.Spr("Wick", root.transform, Art.Square, Art.Glow, new Color(0.1f, 0.07f, 0.06f), 13).transform;
-            wick.localScale = new Vector3(0.05f, 0.15f, 1f);
-            halo = Art.Spr("Halo", root.transform, Art.Soft, Art.Glow, new Color(1f, 0.55f, 0.15f, 0.55f), 14).transform;
+            // The child and cape share a parent so both can flip and bob together.
+            figure = new GameObject("Figure").transform;
+            figure.SetParent(root.transform, false);
+            cape = Art.Spr("Cape", figure, Art.Cape, Art.Glow, CapeLit, 11).transform;
+            capeSprite = cape.GetComponent<SpriteRenderer>();
+            var child = Art.Spr("Child", figure, Art.Child, Art.Glow, Color.white, 12);
+            bodySprite = child.GetComponent<SpriteRenderer>();
+            child.transform.localPosition = new Vector3(0f, ChildCenterY, 0f);
+            cape.localPosition = new Vector3(0f, ChildCenterY, 0f);
+            halo = Art.Spr("Halo", root.transform, Art.Soft, Art.Glow, new Color(1f, 0.55f, 0.15f, 0.55f), 10).transform;
             haloSprite = halo.GetComponent<SpriteRenderer>();
-            flame = Art.Spr("Flame", root.transform, Art.Soft, Art.Glow, Art.Core, 15).transform;
+            flame = Art.Spr("Heart", figure, Art.Soft, Art.Glow, Art.Core, 13).transform;
             flameSprite = flame.GetComponent<SpriteRenderer>();
             aura = Art.Spr("Aura", root.transform, Art.Soft, Art.Glow, new Color(1f, 0.3f, 0.05f, 0f), 2).transform;
             auraSprite = aura.GetComponent<SpriteRenderer>();
             arrow = Art.Spr("AltarArrow", parent, Art.Arrow, Art.Glow, Art.Flame, 16, 0.3f).transform;
             arrowSprite = arrow.GetComponent<SpriteRenderer>();
+            soulArrow = Art.Spr("SoulArrow", parent, Art.Arrow, Art.Glow, Color.white, 16, 0.26f).transform;
+            soulArrowSprite = soulArrow.GetComponent<SpriteRenderer>();
             crosshair = Art.Spr("Crosshair", parent, Art.Disk, Art.Glow, new Color(1f, 0.85f, 0.5f, 0.9f), 30, 0.16f).transform;
             Art.Spr("Ring", crosshair, Art.Soft, Art.Glow, new Color(1f, 0.5f, 0.15f, 0.55f), 29, 3.2f);
             glow = Art.AddLight(root, new Color(1f, 0.72f, 0.42f), lightRadius, 1.15f);
@@ -90,7 +106,7 @@ namespace Candlewick
                 if (kb.eKey.wasPressedThisFrame) game.Interact();
             }
             float speed = EffectiveMode == FlameMode.Flare ? 7.5f : EffectiveMode == FlameMode.Dim ? 3.4f : NormalSpeed;
-            MoveBody(move * speed, jumpDown, dt);
+            MoveBody(move * speed * SpeedMultiplier, jumpDown, dt);
 
             bool firing = false;
             if (mouse != null)
@@ -180,20 +196,22 @@ namespace Candlewick
             var mode = EffectiveMode;
             float rate = game.Buffs.FireRateMultiplier;
             float reach = game.Buffs.RangeMultiplier;
+            float power = DamageMultiplier;
+            float swell = 0.75f + 0.25f * power; // A fuller candle also breathes a visibly thicker flame.
             Vector2 muzzle = Pos + Aim * 0.45f;
             switch (mode)
             {
                 case FlameMode.Flare:
                     fireCooldown += 0.0125f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-14f, 14f)) * Random.Range(15f, 19f), 2.5f, 1f, 4.2f, 0.65f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-14f, 14f)) * Random.Range(15f, 19f), 2.5f * power, 1f * swell, 4.2f * swell, 0.65f * reach);
                     break;
                 case FlameMode.Dim:
                     fireCooldown += 0.06f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-6f, 6f)) * Random.Range(7f, 9f), 0.4f, 0.45f, 1.5f, 0.45f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-6f, 6f)) * Random.Range(7f, 9f), 0.4f * power, 0.45f * swell, 1.5f * swell, 0.45f * reach);
                     break;
                 default:
                     fireCooldown += 0.02f / rate;
-                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-9f, 9f)) * Random.Range(11.5f, 14.5f), 1.1f, 0.7f, 3f, 0.55f * reach);
+                    game.SpawnFlame(muzzle, Rotate(Aim, Random.Range(-9f, 9f)) * Random.Range(11.5f, 14.5f), 1.1f * power, 0.7f * swell, 3f * swell, 0.55f * reach);
                     break;
             }
         }
@@ -232,6 +250,7 @@ namespace Candlewick
         {
             var mode = EffectiveMode;
             float targetRadius = mode == FlameMode.Flare ? 14f : mode == FlameMode.Dim ? 3.8f : 8f;
+            targetRadius *= 1f + LightPerFollower * game.FollowerCount;
             lightRadius = Mathf.Lerp(lightRadius, targetRadius, 1f - Mathf.Exp(-dt * 6f));
             float flicker = Mathf.PerlinNoise(Time.time * 9f, 3.1f) * 0.14f + Mathf.PerlinNoise(Time.time * 23f, 8.3f) * 0.06f;
             glow.pointLightOuterRadius = lightRadius * (0.92f + flicker);
@@ -241,31 +260,39 @@ namespace Candlewick
 
             root.transform.localPosition = new Vector3(Pos.x, Pos.y, 0f);
 
-            // The candle physically melts: its height is its health.
             float fraction = Mathf.Clamp01(Wax / MaxWax);
-            float height = Mathf.Lerp(0.14f, BodyHeight, fraction);
-            float width = 0.42f + (1f - fraction) * 0.1f;
-            body.localScale = new Vector3(width, height, 1f);
-            body.localPosition = new Vector3(0f, -Radius + height / 2f, 0f);
-            bodySprite.color = hurtFlash > 0f ? Art.Blood : Art.Wax;
-            float top = -Radius + height;
-            wick.localPosition = new Vector3(0f, top + 0.06f, 0f);
+            float speedNow = dt > 0f ? (Pos.x - lastPos.x) / dt : 0f;
+            lastPos = Pos;
+            if (Mathf.Abs(speedNow) > 0.5f) facing = Mathf.Sign(speedNow);
+            else if (Mathf.Abs(Aim.x) > 0.2f) facing = Mathf.Sign(Aim.x);
+            stride += Mathf.Abs(speedNow) * dt * 2.2f;
 
-            float size = mode == FlameMode.Flare ? 1.05f : mode == FlameMode.Dim ? 0.32f : 0.58f;
-            size *= 0.9f + flicker * 1.2f;
-            flame.localPosition = new Vector3(Aim.x * 0.04f, top + 0.13f + size * 0.34f, 0f);
-            flame.localScale = new Vector3(size * 0.65f, size, 1f);
+            figure.localScale = new Vector3(facing * FigureScale, FigureScale, 1f);
+            figure.localPosition = new Vector3(0f, grounded ? Mathf.Abs(Mathf.Sin(stride)) * 0.05f : 0f, 0f);
+
+            bodySprite.color = hurtFlash > 0f ? Art.Blood : Color.Lerp(new Color(0.55f, 0.52f, 0.55f), Color.white, 0.4f + fraction * 0.6f);
+            capeSprite.color = Color.Lerp(CapeSpent, CapeLit, fraction * fraction);
+            // The cape trails behind when running and billows up when falling.
+            float sway = Mathf.Clamp(Mathf.Abs(speedNow) * 2.4f, 0f, 14f) + Mathf.Clamp(-verticalSpeed * 0.8f, -6f, 10f) + Mathf.Sin(Time.time * 3f) * 1.5f;
+            cape.localRotation = Quaternion.Euler(0f, 0f, -sway);
+
+            float size = mode == FlameMode.Flare ? 0.8f : mode == FlameMode.Dim ? 0.22f : 0.42f;
+            size *= (0.9f + flicker * 1.2f) * (0.4f + 0.6f * fraction);
+            flame.localPosition = new Vector3(0.04f, ChildCenterY + 0.1f, 0f);
+            flame.localScale = Vector3.one * size;
             flameSprite.color = SnuffedFor > 0f ? new Color(0.6f, 0.45f, 0.9f) : Art.Core;
-            halo.localPosition = flame.localPosition;
-            halo.localScale = Vector3.one * size * 2.8f;
-            haloSprite.color = mode == FlameMode.Flare ? new Color(1f, 0.42f, 0.08f, 0.8f) : new Color(1f, 0.58f, 0.15f, 0.5f);
+            halo.localPosition = new Vector3(0f, ChildCenterY * FigureScale, 0f);
+            halo.localScale = Vector3.one * (size * 2.2f + 0.9f + fraction * 1.4f);
+            float haloAlpha = (mode == FlameMode.Flare ? 0.7f : 0.42f) * (0.25f + 0.75f * fraction);
+            haloSprite.color = new Color(1f, mode == FlameMode.Flare ? 0.5f : 0.68f, 0.28f, haloAlpha);
 
             emberTimer -= dt;
             if (emberTimer <= 0f)
             {
-                emberTimer = mode == FlameMode.Flare ? 0.02f : mode == FlameMode.Dim ? 0.3f : 0.08f;
-                Vector2 tip = Pos + (Vector2)flame.localPosition;
-                var color = Color.Lerp(Art.Flame, Art.Blood, Random.value);
+                emberTimer = (mode == FlameMode.Flare ? 0.03f : mode == FlameMode.Dim ? 0.4f : 0.12f) / Mathf.Max(0.15f, fraction);
+                // Light sheds from the cape's hem, more thinly as it runs out.
+                Vector2 tip = Pos + new Vector2(-facing * Random.Range(0.1f, 0.7f), Random.Range(-0.3f, 0.3f));
+                var color = Color.Lerp(Art.Flame, Art.Core, Random.value);
                 game.Particles.Emit(tip + Random.insideUnitCircle * 0.08f, new Vector2(Random.Range(-0.4f, 0.4f), Random.Range(0.8f, 2f)), color, Random.Range(0.05f, 0.14f), Random.Range(0.3f, 0.7f));
             }
 
@@ -278,7 +305,18 @@ namespace Candlewick
             Vector2 dir = (objective - Pos).normalized;
             arrow.position = Pos + dir * 1.2f;
             arrow.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
-            arrowSprite.color = game.CurrentGate.IsOpen ? new Color(0.75f, 0.88f, 1f, 0.5f + flicker) : new Color(1f, 0.78f, 0.28f, 0.35f + flicker);
+            arrowSprite.color = new Color(1f, 0.78f, 0.28f, (game.FollowerCount > 0 ? 0.6f : 0.35f) + flicker);
+
+            // A second, paler arrow points at the nearest soul still waiting to be found.
+            var soul = game.NearestLost(Pos);
+            soulArrowSprite.enabled = soul != null && Vector2.Distance(soul.Pos, Pos) > 3f;
+            if (soul != null)
+            {
+                Vector2 toSoul = (soul.Pos - Pos).normalized;
+                soulArrow.position = Pos + toSoul * 1.6f;
+                soulArrow.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(toSoul.y, toSoul.x) * Mathf.Rad2Deg);
+                soulArrowSprite.color = new Color(0.65f, 0.88f, 1f, 0.35f + flicker);
+            }
         }
 
         public void ChangeWax(float amount)
@@ -299,12 +337,28 @@ namespace Candlewick
             game.Particles.Burst(Pos, 10, Art.Wax, 3.5f);
         }
 
+        /// <summary>For the intro: 0 hides the child and its guides, 1 is fully there.</summary>
+        public void SetPresence(float amount)
+        {
+            bool present = amount > 0f;
+            root.transform.localPosition = new Vector3(Pos.x, Pos.y, 0f);
+            root.transform.localScale = new Vector3(amount, amount, 1f);
+            root.SetActive(present);
+            bool guides = amount >= 1f;
+            arrow.gameObject.SetActive(guides);
+            soulArrow.gameObject.SetActive(guides);
+            crosshair.gameObject.SetActive(guides);
+        }
+
         public void GoOut()
         {
             Alive = false;
             flameSprite.enabled = false;
             haloSprite.enabled = false;
+            capeSprite.color = CapeSpent;
+            bodySprite.color = new Color(0.4f, 0.38f, 0.42f);
             arrowSprite.enabled = false;
+            soulArrowSprite.enabled = false;
             crosshair.gameObject.SetActive(false);
             glow.enabled = false;
             streamGlow.enabled = false;

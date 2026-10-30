@@ -6,15 +6,18 @@ using UnityEngine.Rendering.Universal;
 
 namespace Candlewick
 {
-    public enum GameState { Title, Playing, Choosing, FloorCleared, Escaped, Dying, GameOver }
+    public enum GameState { Title, Intro, Playing, Choosing, Sunrise, Dying, GameOver }
 
     /// <summary>Owns the run: game state, the dungeon, every live entity, and the per-frame update order.</summary>
     public class GameManager : MonoBehaviour
     {
-        public const int FloorCount = 3;
-        public const int CandlesToOpen = 3;
-        const int CandlesPerFloor = 5, MaxGhosts = 5;
-        const float LightCost = 15f, ReviveFraction = 0.45f, FirstGhostDelay = 5f, SecondsPerExtraGhost = 45f;
+        public const int TotalSouls = 12, TotalCandles = 7;
+        public const float NightSeconds = 300f;
+        const int MaxGhosts = 5, MapSize = 2;
+        const float DawnRushSeconds = 6f; // How long the sun takes to rise once no souls are left.
+        const float DawnStarts = 0.75f; // The fraction of the night after which the sky begins to lighten.
+        const float LightCost = 15f, GatherCost = 5f, LightPerSoul = 10f, ReviveFraction = 0.45f, FirstGhostDelay = 5f, SecondsPerExtraGhost = 45f;
+        static readonly Color DawnSky = new Color(1f, 0.62f, 0.4f);
 
         public GameState State { get; private set; } = GameState.Title;
         public DungeonMap Map { get; private set; }
@@ -25,19 +28,26 @@ namespace Candlewick
         public Transform WorldRoot { get; private set; }
         public readonly List<Enemy> Enemies = new List<Enemy>();
         public readonly List<Altar> Altars = new List<Altar>();
+        public readonly List<Soul> Souls = new List<Soul>();
+        public int Rescued { get; private set; }
+        public int LostSouls { get; private set; }
+        public float NightLeft { get; private set; }
 
-        public int Depth { get; private set; } = 1;
+        public int Depth => 1;
         public int Kills;
         public int LitThisNight { get; private set; }
         public int TotalSaved { get; private set; }
         public float SurvivalTime { get; private set; }
-        public Gate CurrentGate { get; private set; }
 
+        readonly List<RoomDoor> doors = new List<RoomDoor>();
         readonly List<FlamePuff> flames = new List<FlamePuff>();
         readonly List<DarkBolt> bolts = new List<DarkBolt>();
         readonly List<WaxDrop> drops = new List<WaxDrop>();
         readonly List<GloomTrail> trails = new List<GloomTrail>();
         Camera cam;
+        Light2D globalLight;
+        float dawnRushRate;
+        SunrayIntro intro;
         GameHud hud;
         Vector3 camPos;
         float shake, ambientTimer, dyingTimer, ghostClock;
@@ -79,14 +89,21 @@ namespace Candlewick
             volume.profile = profile;
         }
 
-        static void SetUpDarkness()
+        void SetUpDarkness()
         {
             foreach (var light in FindObjectsByType<Light2D>(FindObjectsInactive.Exclude))
-            {
-                if (light.lightType != Light2D.LightType.Global) continue;
-                light.color = new Color(0.35f, 0.38f, 0.72f);
-                light.intensity = 0.05f;
-            }
+                if (light.lightType == Light2D.LightType.Global) globalLight = light;
+        }
+
+        // Night holds until late, then the sky warms and the world slowly becomes visible.
+        void UpdateDawn()
+        {
+            float night = 1f - NightLeft / NightSeconds;
+            float dawn = Mathf.Clamp01((night - DawnStarts) / (1f - DawnStarts));
+            Map.SetSkyTint(Color.Lerp(DungeonMap.NightSky, DawnSky, dawn));
+            if (globalLight == null) return;
+            globalLight.color = Color.Lerp(new Color(0.35f, 0.38f, 0.72f), new Color(1f, 0.72f, 0.5f), dawn);
+            globalLight.intensity = Mathf.Lerp(0.05f, 0.45f, dawn);
         }
 
         void BuildNight()
@@ -94,32 +111,40 @@ namespace Candlewick
             ClearWorld();
             WorldRoot = new GameObject("World").transform;
             Particles = new Particles(WorldRoot);
-            Map = new DungeonMap(Depth);
+            Map = new DungeonMap(MapSize);
             Map.BuildTilemap(WorldRoot);
             LitThisNight = 0;
+            foreach (var spot in Map.DoorSpots) doors.Add(new RoomDoor(this, spot));
 
-            // Escape runs from a tower at the top left down to the main gate at the bottom right.
+            // The ray lands in a dorm room; candles and souls are scattered through the other rooms.
             var start = Map.StartRoom;
             start.IsStart = true;
             start.Entered = true;
-            var middle = new List<Room>();
+            var free = new List<Room>();
             foreach (var room in Map.Rooms)
             {
-                if (room == start) continue;
-                // There are many rooms now, so only some of the empty ones hold enemies.
+                if (room == start || room.Kind == RoomKind.Stairs || room.Kind == RoomKind.Roof) continue;
+                // There are many rooms, so only some of the empty ones hold enemies.
                 if (Random.value < 0.5f) room.WavesLeft = 1;
-                if (room != Map.GateRoom) middle.Add(room);
+                free.Add(room);
             }
-            CurrentGate = new Gate(this, Map.GatePos);
 
-            for (int i = 0; i < CandlesPerFloor; i++)
+            for (int i = 0; i < TotalCandles; i++)
             {
-                int pick = Random.Range(0, middle.Count);
-                var room = middle[pick];
-                middle.RemoveAt(pick);
+                var room = TakeRandom(free);
                 Altars.Add(new Altar(this, room, room.Stand + Vector2.up * 0.3f));
-                room.WavesLeft = 1 + Mathf.Min(1 + Depth / 2, 3);
+                room.WavesLeft = 2;
             }
+            for (int i = 0; i < TotalSouls; i++)
+            {
+                var room = TakeRandom(free);
+                Souls.Add(new Soul(this, room.Stand + Vector2.up * 0.4f));
+                room.WavesLeft = Mathf.Max(room.WavesLeft, 1);
+            }
+
+            NightLeft = NightSeconds;
+            dawnRushRate = 0f;
+            UpdateDawn();
 
             float previousWax = Player != null ? Player.Wax : 100f;
             float previousMax = Player != null ? Player.MaxWax : 100f;
@@ -132,10 +157,20 @@ namespace Candlewick
             cam.transform.position = camPos;
         }
 
+        static Room TakeRandom(List<Room> rooms)
+        {
+            int pick = Random.Range(0, rooms.Count);
+            var room = rooms[pick];
+            rooms.RemoveAt(pick);
+            return room;
+        }
+
         void ClearWorld()
         {
             Enemies.Clear();
             Altars.Clear();
+            Souls.Clear();
+            doors.Clear();
             flames.Clear();
             bolts.Clear();
             drops.Clear();
@@ -150,6 +185,9 @@ namespace Candlewick
 
             switch (State)
             {
+                case GameState.Intro:
+                    TickIntro(dt);
+                    break;
                 case GameState.Playing:
                     TickPlaying(dt);
                     break;
@@ -173,23 +211,47 @@ namespace Candlewick
             if (kb == null) return;
             bool confirm = kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame;
             if (!confirm) return;
-            if (State == GameState.Title || State == GameState.GameOver || State == GameState.Escaped) StartRun();
-            else if (State == GameState.FloorCleared) NextFloor();
+            if (State == GameState.Title || State == GameState.GameOver || State == GameState.Sunrise) StartRun();
+        }
+
+        void TickIntro(float dt)
+        {
+            var kb = Keyboard.current;
+            var mouse = Mouse.current;
+            bool skip = (kb != null && kb.anyKey.wasPressedThisFrame) || (mouse != null && mouse.leftButton.wasPressedThisFrame);
+            if (skip && intro.CanSkip) intro.Skip();
+            Particles.Tick(dt);
+            if (!intro.Tick(dt)) return;
+            intro = null;
+            Player.SetPresence(1f);
+            State = GameState.Playing;
+            hud.Toast(Loc.T("Find the lost souls before sunrise", "Знайди заблукані душі до світанку"));
         }
 
         void TickPlaying(float dt)
         {
             SurvivalTime += dt;
+            NightLeft = Mathf.Max(0f, NightLeft - dt * (dawnRushRate > 0f ? dawnRushRate : 1f));
+            UpdateDawn();
             Map.UpdateFlow(Player.Pos);
             Player.Tick(dt, cam);
             if (State != GameState.Playing) return;
 
-            UpdateRooms(dt);
-            UpdateAmbient(dt);
-            UpdateGhosts(dt);
+            if (dawnRushRate <= 0f)
+            {
+                UpdateRooms(dt);
+                UpdateAmbient(dt);
+                UpdateGhosts(dt);
+            }
 
-            CurrentGate.Tick(dt);
+            foreach (var door in doors) door.Tick(dt);
             foreach (var altar in Altars) altar.Tick(this, dt);
+            int followOrder = 0;
+            foreach (var soul in Souls)
+            {
+                soul.Tick(dt, soul.State == Soul.Status.Following ? followOrder++ : 0);
+                if (soul.State == Soul.Status.Following && IsInSanctuary(soul.Pos)) SaveSoul(soul);
+            }
             for (int i = 0; i < Enemies.Count; i++) Enemies[i].Tick(dt);
             SeparateEnemies();
             TickList(flames, f => f.Tick(dt), f => f.Dead);
@@ -207,7 +269,10 @@ namespace Candlewick
             }
             Particles.Tick(dt);
 
+            if (dawnRushRate > 0f) Player.Wax = Mathf.Max(Player.Wax, 1f); // Nothing can end the run during the last moments of the night.
             if (Player.Wax <= 0f) OnExtinguished();
+            else if (NightLeft <= 0f) EndAtSunrise();
+            else if (dawnRushRate <= 0f && !AnySoulsLeft()) RushToDawn();
         }
 
         static void TickList<T>(List<T> list, System.Action<T> tick, System.Predicate<T> dead)
@@ -291,7 +356,7 @@ namespace Candlewick
             }
         }
 
-        // The longer the player lingers on a floor, the more ghosts hunt them.
+        // The longer the night goes on, the more ghosts hunt them.
         void UpdateGhosts(float dt)
         {
             ghostClock += dt;
@@ -350,35 +415,45 @@ namespace Candlewick
         public string InteractPrompt()
         {
             if (State != GameState.Playing) return null;
-            if (Vector2.Distance(CurrentGate.Pos, Player.Pos) <= Gate.InteractRange)
+            var lost = NearestLost(Player.Pos);
+            if (lost != null && Vector2.Distance(lost.Pos, Player.Pos) <= Soul.GatherRange)
             {
-                int missing = CandlesToOpen - LitThisNight;
-                if (!CurrentGate.IsOpen) return Loc.T($"Sealed. Candles still needed to open it: {missing}", $"Запечатано. Ще потрібно запалити свічок: {missing}");
-                return Depth >= FloorCount
-                    ? Loc.T("[E] Escape the castle", "[E] Втекти із замку")
-                    : Loc.T("[E] Descend to the next floor", "[E] Спуститися на наступний поверх");
+                if (Player.Wax <= GatherCost) return Loc.T("Not enough light to share", "Замало світла, щоб поділитися");
+                return Loc.T("[E] Reach out to this soul (-5 light)", "[E] Простягнути руку цій душі (-5 світла)");
             }
             var altar = NearestUnlitAltar(Player.Pos);
             if (altar == null || Vector2.Distance(altar.Pos, Player.Pos) > Altar.InteractRange) return null;
-            if (!altar.Room.Cleared) return Loc.T("The shadows smother this wick. Clear the room first", "Тіні душать цей гніт. Спершу зачисть кімнату");
-            if (Player.Wax <= LightCost) return Loc.T("Not enough wax to share", "Замало воску, щоб поділитися");
-            return Loc.T("[E] Share your flame (-15 wax)", "[E] Поділитися полум'ям (-15 воску)");
+            if (!altar.Room.Cleared) return Loc.T("The shadows smother this wick. Clear the room first", "Тіні душать цей гніт. Спершу очисти кімнату");
+            if (Player.Wax <= LightCost) return Loc.T("Not enough light to share", "Замало світла, щоб поділитися");
+            return Loc.T("[E] Light this candle (-15 light)", "[E] Запалити цю свічку (-15 світла)");
         }
 
-        /// <summary>Where the player's guide arrow points: the nearest candle, then the open gate.</summary>
+        /// <summary>Where the guide arrow points: a lit candle when souls need one, otherwise a candle to light.</summary>
         public Vector2 Objective(Vector2 from)
         {
-            if (CurrentGate.IsOpen) return CurrentGate.Pos;
-            var altar = NearestUnlitAltar(from);
-            return altar != null ? altar.Pos : CurrentGate.Pos;
+            if (FollowerCount > 0)
+            {
+                Altar nearest = null;
+                float best = float.MaxValue;
+                foreach (var candle in Altars)
+                {
+                    float d = Vector2.Distance(candle.Pos, from);
+                    if (!candle.IsLit || d >= best) continue;
+                    best = d;
+                    nearest = candle;
+                }
+                if (nearest != null) return nearest.Pos;
+            }
+            var unlit = NearestUnlitAltar(from);
+            return unlit != null ? unlit.Pos : from;
         }
 
         public void Interact()
         {
-            if (Vector2.Distance(CurrentGate.Pos, Player.Pos) <= Gate.InteractRange)
+            var lost = NearestLost(Player.Pos);
+            if (lost != null && Vector2.Distance(lost.Pos, Player.Pos) <= Soul.GatherRange)
             {
-                if (CurrentGate.IsOpen) ReachGate();
-                else Sound.Deny();
+                GatherSoul(lost);
                 return;
             }
             var altar = NearestUnlitAltar(Player.Pos);
@@ -394,12 +469,6 @@ namespace Candlewick
             TotalSaved++;
             Sound.Light();
             Particles.Burst(altar.Pos + Vector2.up, 28, Art.Flame, 5f);
-            if (LitThisNight == CandlesToOpen)
-            {
-                CurrentGate.Open();
-                ghostClock += SecondsPerExtraGhost; // Opening the gate wakes another ghost.
-                hud.Toast(Loc.T("The gate is open. Run!", "Ворота відчинено. Тікай!"));
-            }
             State = GameState.Choosing;
             hud.ShowBuffChoice(BuffSet.RollChoices(3));
         }
@@ -417,17 +486,92 @@ namespace Candlewick
             State = GameState.Playing;
         }
 
-        void ReachGate()
+        void GatherSoul(Soul soul)
         {
-            Sound.Light();
-            if (Depth >= FloorCount)
+            if (Player.Wax <= GatherCost)
             {
-                State = GameState.Escaped;
-                hud.ShowEscaped();
+                Sound.Deny();
                 return;
             }
-            State = GameState.FloorCleared;
-            hud.ShowFloorCleared();
+            Player.ChangeWax(-GatherCost);
+            soul.Gather();
+            Sound.Light();
+            Particles.Burst(soul.Pos, 16, Art.Core, 3.5f);
+            hud.Toast(Loc.T("The soul follows you. Lead it to a lit candle", "Душа йде за тобою. Доведи її до запаленої свічки"));
+        }
+
+        void SaveSoul(Soul soul)
+        {
+            soul.Save();
+            Rescued++;
+            Player.ChangeWax(LightPerSoul);
+            Sound.Light();
+            hud.Toast(Loc.T("A soul is free", "Душа вільна"));
+        }
+
+        bool AnySoulsLeft()
+        {
+            foreach (var soul in Souls)
+                if (soul.State == Soul.Status.Lost || soul.State == Soul.Status.Following) return true;
+            return false;
+        }
+
+        public int FollowerCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var soul in Souls) if (soul.State == Soul.Status.Following) n++;
+                return n;
+            }
+        }
+
+        public Soul NearestLost(Vector2 from) => Nearest(from, Soul.Status.Lost);
+        public Soul NearestFollower(Vector2 from) => Nearest(from, Soul.Status.Following);
+
+        Soul Nearest(Vector2 from, Soul.Status status)
+        {
+            Soul best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var soul in Souls)
+            {
+                if (soul.State != status) continue;
+                float d = Vector2.Distance(soul.Pos, from);
+                if (d >= bestDistance) continue;
+                bestDistance = d;
+                best = soul;
+            }
+            return best;
+        }
+
+        public void LoseFollower(Soul soul)
+        {
+            soul.Snuff();
+            LostSouls++;
+            Sound.Extinguish();
+            Shake(0.25f);
+            hud.Toast(Loc.T("A ghost took a soul you were leading", "Привид забрав душу, яку ти вів"));
+        }
+
+        // With nobody left to save the night has no reason to go on, so the clock runs out in a few seconds.
+        void RushToDawn()
+        {
+            dawnRushRate = Mathf.Max(NightLeft / DawnRushSeconds, 1f);
+            foreach (var enemy in Enemies) enemy.Die(false);
+            Enemies.Clear();
+            hud.Toast(Loc.T("No souls are left in the dark. The sun is coming", "У темряві більше немає душ. Сонце вже сходить"));
+        }
+
+        // Sunrise reaches every soul still at the ray's side; those left in the dark stay lost.
+        void EndAtSunrise()
+        {
+            foreach (var soul in Souls)
+                if (soul.State == Soul.Status.Following) SaveSoul(soul);
+            foreach (var enemy in Enemies) enemy.Die(false);
+            Enemies.Clear();
+            Sound.Light();
+            State = GameState.Sunrise;
+            hud.ShowSunrise();
         }
 
         void OnExtinguished()
@@ -455,11 +599,13 @@ namespace Candlewick
                 Enemies.RemoveAll(e => e.Dead);
                 foreach (var bolt in bolts) bolt.Kill();
                 bolts.Clear();
+                foreach (var soul in Souls)
+                    if (soul.State == Soul.Status.Following) soul.JoinPlayer();
                 foreach (var trail in trails)
                     if (trail.IsNear(checkpoint.Pos, 7f)) trail.Kill();
                 trails.RemoveAll(t => t.Dead);
                 Shake(0.5f);
-                hud.Toast(Loc.T("A rescued candle rekindles you", "Врятована свічка знову запалила тебе"));
+                hud.Toast(Loc.T("A candle rekindles your light", "Свічка знову запалила твоє світло"));
                 return;
             }
 
@@ -488,24 +634,16 @@ namespace Candlewick
         public void StartRun()
         {
             Buffs = new BuffSet();
-            Depth = 1;
             Kills = 0;
             TotalSaved = 0;
+            Rescued = 0;
+            LostSouls = 0;
             SurvivalTime = 0f;
             Player = null;
             BuildNight();
             hud.HidePanels();
-            State = GameState.Playing;
-        }
-
-        public void NextFloor()
-        {
-            if (State != GameState.FloorCleared) return;
-            Depth++;
-            BuildNight();
-            Player.ChangeWax(Player.MaxWax * 0.35f);
-            hud.HidePanels();
-            State = GameState.Playing;
+            intro = new SunrayIntro(this, Map.StartWindow, Player.Pos);
+            State = GameState.Intro;
         }
 
         // --- Spawners used by entities ---------------------------------------------------------

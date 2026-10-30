@@ -8,6 +8,7 @@ namespace Candlewick
     {
         public static readonly Color Background = new Color(0.035f, 0.03f, 0.06f);
         public static readonly Color Wax = new Color(0.96f, 0.88f, 0.72f);
+        public static readonly Color Sunray = new Color(1f, 0.8f, 0.36f);
         public static readonly Color WaxDark = new Color(0.45f, 0.42f, 0.46f);
         public static readonly Color Ember = new Color(1f, 0.45f, 0.08f);
         public static readonly Color Flame = new Color(1f, 0.78f, 0.28f);
@@ -16,7 +17,7 @@ namespace Candlewick
         public static readonly Color Gloom = new Color(0.32f, 0.12f, 0.5f);
 
         public static Material Lit, Glow;
-        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Floor, FloorAlt, WallTop, WallFace, Plank, Sky, SkyStars, Window, Banner, Pillar, Arrow;
+        public static Sprite Soft, Disk, Square, Moth, Snuffer, Creeper, Ghost, Soul, Child, Cape, Bunk, Desk, Wardrobe, Fridge, Stove, Shower, TileKitchen, TileShower, Floor, FloorAlt, WallTop, WallFace, Plank, Sky, SkyStars, Window, Banner, Pillar, Arrow;
 
         public static void Init()
         {
@@ -35,8 +36,19 @@ namespace Candlewick
             Snuffer = Load("snuffer");
             Creeper = Load("creeper");
             Ghost = Load("ghost");
+            Soul = Load("soul");
+            Child = Load("child");
+            Cape = Load("cape");
+            Bunk = Load("bunk");
+            Desk = Load("desk");
+            Wardrobe = Load("wardrobe");
+            Fridge = Load("fridge");
+            Stove = Load("stove");
+            Shower = Load("shower");
+            TileKitchen = Load("tile_kitchen");
+            TileShower = Load("tile_shower");
 
-            // Side view: Floor is the castle wall behind the action, WallTop is solid rock, WallFace a walkable ledge.
+            // Side view: Floor is the dormitory wall behind the action, WallTop is solid rock, WallFace a walkable ledge.
             Floor = Load("wall_back");
             FloorAlt = Load("wall_back_alt");
             WallTop = Load("stone");

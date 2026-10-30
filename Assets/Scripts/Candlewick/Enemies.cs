@@ -212,7 +212,7 @@ namespace Candlewick
             lastHp = Hp;
             slowedFor -= dt;
 
-            // It goes for whichever is closest: the player, or a candle the player is trying to save.
+            // It goes for whichever is closest: the player, or a soul the player is trying to save.
             var player = Game.Player;
             var prey = Game.NearestFollower(Pos);
             bool huntsFollower = prey != null && Vector2.Distance(prey.Pos, Pos) < Vector2.Distance(player.Pos, Pos);

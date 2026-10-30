@@ -9,7 +9,7 @@ namespace Candlewick
     /// <summary>The player: wax is health, and the flame mode trades wax for light, speed and firepower.</summary>
     public class PlayerCandle
     {
-        const float Radius = 0.34f, BodyHeight = 1.15f, ContactGrace = 0.6f;
+        const float Radius = 0.34f, BodyHeight = 1.15f, ContactGrace = 0.6f, SanctuaryHealPerSecond = 3f;
 
         public Vector2 Pos;
         public float Wax, MaxWax = 100f;
@@ -25,7 +25,7 @@ namespace Candlewick
         readonly Transform body, wick, flame, halo, aura, arrow, crosshair;
         readonly SpriteRenderer bodySprite, flameSprite, haloSprite, auraSprite, arrowSprite;
         readonly Light2D glow, streamGlow;
-        float fireCooldown, grace, hurtFlash, emberTimer, lightRadius = 8f;
+        float fireCooldown, grace, hurtFlash, emberTimer, healMoteTimer, lightRadius = 8f;
 
         public PlayerCandle(GameManager game, Transform parent, Vector2 pos)
         {
@@ -159,10 +159,21 @@ namespace Candlewick
         {
             SnuffedFor = Mathf.Max(0f, SnuffedFor - dt);
             float rate = EffectiveMode == FlameMode.Flare ? 3f : EffectiveMode == FlameMode.Dim ? 0.1f : 0.5f;
-            if (game.IsInSanctuary(Pos)) rate = 0f;
-            ChangeWax(-rate * game.Buffs.DamageTakenMultiplier * dt);
+            if (game.IsInSanctuary(Pos)) Heal(dt);
+            else ChangeWax(-rate * game.Buffs.DamageTakenMultiplier * dt);
             grace -= dt;
             hurtFlash -= dt;
+        }
+
+        // Lit candles pour wax back into the player, with motes rising while it still does anything.
+        void Heal(float dt)
+        {
+            if (Wax >= MaxWax) return;
+            ChangeWax(SanctuaryHealPerSecond * dt);
+            healMoteTimer -= dt;
+            if (healMoteTimer > 0f) return;
+            healMoteTimer = 0.12f;
+            game.Particles.Emit(Pos + new Vector2(Random.Range(-0.45f, 0.45f), -0.4f), new Vector2(0f, Random.Range(1f, 1.8f)), Art.Wax, Random.Range(0.1f, 0.18f), 0.8f);
         }
 
         void Burn(float dt)

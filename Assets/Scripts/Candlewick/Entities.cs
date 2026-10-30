@@ -38,7 +38,7 @@ namespace Candlewick
             if (life <= 0f) { Kill(); return; }
             float age = 1f - life / maxLife;
             pos += startVel * Mathf.Lerp(1f, EndSpeed, age) * dt;
-            if (!game.Map.IsFloor(pos))
+            if (!game.Map.IsOpen(pos))
             {
                 if (Random.value < 0.25f) game.Particles.Burst(pos - startVel.normalized * 0.1f, 2, Art.Ember, 2f);
                 Kill();
@@ -88,7 +88,7 @@ namespace Candlewick
             life -= dt;
             pos += vel * dt;
             go.transform.localPosition = pos;
-            if (life <= 0f || !game.Map.IsFloor(pos)) { Kill(); return; }
+            if (life <= 0f || !game.Map.IsOpen(pos)) { Kill(); return; }
             if (Vector2.Distance(pos, game.Player.Pos) > 0.5f) return;
             game.Player.Hurt(6f, vel.normalized * 0.2f);
             game.Player.Snuff(2.5f);
@@ -157,8 +157,9 @@ namespace Candlewick
             // The solid disk matches the drain radius exactly; the rim makes it readable on dark floor.
             go = Art.Spr("Trail", game.WorldRoot, Art.Disk, Art.Glow, Color.black, 2, Reach * 2f);
             go.transform.localPosition = pos;
+            go.transform.localScale = new Vector3(Reach * 2f, Reach * 0.7f, 1f); // A puddle lying on the ground.
             sprite = go.GetComponent<SpriteRenderer>();
-            rim = Art.Spr("Rim", go.transform, Art.Soft, Art.Glow, Color.clear, 1, 1.7f).GetComponent<SpriteRenderer>();
+            rim =Art.Spr("Rim", go.transform, Art.Soft, Art.Glow, Color.clear, 1, 1.7f).GetComponent<SpriteRenderer>();
         }
 
         public void Tick(float dt)

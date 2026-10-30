@@ -199,18 +199,18 @@ namespace Candlewick
             AddButton(panel, Loc.T("Start Game", "Почати гру"), new Vector2(0f, 120f), new Vector2(380f, 86f), game.StartRun);
 
             string controls = Loc.T(
-                "<b>WASD</b>  Move          <b>Mouse</b>  Aim          <b>Hold Left Click</b>  Breathe fire\n" +
+                "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Breathe fire\n" +
                 "<b>Right Click / Shift</b>  Toggle Flare: burns 3 wax/s for speed, light and a roaring wide flame\n" +
-                "<b>Q / Space</b>  Toggle Dim: barely melts, but you are slow, weak and half blind\n" +
+                "<b>Q</b>  Toggle Dim: barely melts, but you are slow, weak and half blind\n" +
                 "<b>E</b>  Share 15 wax with an unlit candle once its room is clear\n\n" +
-                "Light 3 candles to open the gate on each floor, and get through all 3 floors to escape.\n" +
+                "Light 3 candles to open the gate on each floor, and get through all 3 floors to escape. Falling into a pit costs 15 wax.\n" +
                 "Ghosts pass through walls and can't be killed: fire only scatters them, and they stay out of candlelight.\n" +
                 "Enemies drop wax. Lit candles grant a buff, restore your wax nearby, and rekindle you once if your flame dies.",
-                "<b>WASD</b>  Рух          <b>Миша</b>  Приціл          <b>Утримуй ліву кнопку</b>  Дихати вогнем\n" +
+                "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Дихати вогнем\n" +
                 "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 воску/с за швидкість, світло й широке полум'я\n" +
-                "<b>Q / Пробіл</b>  Приглушений режим: майже не таєш, але ти повільний, слабкий і погано бачиш\n" +
+                "<b>Q</b>  Приглушений режим: майже не таєш, але ти повільний, слабкий і погано бачиш\n" +
                 "<b>E</b>  Поділитися 15 воску з незапаленою свічкою, коли кімнату зачищено\n\n" +
-                "На кожному поверсі запали 3 свічки, щоб відчинити ворота, і пройди всі 3 поверхи, щоб утекти.\n" +
+                "На кожному поверсі запали 3 свічки, щоб відчинити ворота, і пройди всі 3 поверхи, щоб утекти. Падіння в яму коштує 15 воску.\n" +
                 "Привиди проходять крізь стіни, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони уникають.\n" +
                 "З ворогів падає віск. Запалена свічка дає посилення, відновлює віск поруч і один раз відроджує, якщо ти згаснеш.");
             var help = Label(panel, controls, 30, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(1760f, 400f));

@@ -444,7 +444,7 @@ namespace Candlewick
             this.spot = spot;
             var sprite = Art.Pillar;
             nativeWidth = sprite.bounds.size.x;
-            var go = Art.Spr("Door", game.WorldRoot, sprite, Art.Lit, Color.white, 8);
+            var go = Art.Spr("Door", game.WorldRoot, sprite, Art.Lit, game.Map.DoorTint, 8);
             panel = go.transform;
             panel.localScale = new Vector3(Width / nativeWidth, Height / sprite.bounds.size.y, 1f);
             panel.localPosition = new Vector3(spot.x, spot.y + Height / 2f, 0f);

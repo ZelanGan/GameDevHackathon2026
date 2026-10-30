@@ -18,7 +18,8 @@ namespace Candlewick
         Font font;
         RectTransform canvas, hudRoot, buffRow, panelRoot;
         Image waxFill, waxFlame;
-        Text waxLabel, candlesLabel, modeLabel, timeLabel, promptLabel, toastLabel;
+        const float GaugeHeight = 300f;
+        Text waxLabel, candlesLabel, rescueLabel, modeLabel, statLabel, timeLabel, promptLabel, toastLabel;
         float toastTime;
         int shownBuffHash = -1;
         List<BuffInfo> currentChoices;
@@ -50,15 +51,18 @@ namespace Candlewick
             BuildGauge();
 
             candlesLabel = Label(hudRoot, "", 38, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(1200f, 60f));
+            rescueLabel = Label(hudRoot, "", 30, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -78f), new Vector2(1200f, 44f));
+            rescueLabel.color = new Color(0.55f, 1f, 0.65f);
             timeLabel = Label(hudRoot, "", 26, TextAnchor.UpperRight, new Vector2(1f, 1f), new Vector2(-40f, -30f), new Vector2(400f, 110f));
             timeLabel.color = Muted;
-            modeLabel = Label(hudRoot, "", 28, TextAnchor.LowerLeft, new Vector2(0f, 0f), new Vector2(210f, 30f), new Vector2(600f, 40f));
+            modeLabel = Label(hudRoot, "", 28, TextAnchor.UpperLeft, new Vector2(0f, 1f), new Vector2(130f, -68f), new Vector2(600f, 40f));
+            statLabel = Label(hudRoot, "", 26, TextAnchor.UpperLeft, new Vector2(0f, 1f), new Vector2(130f, -108f), new Vector2(600f, 40f));
             promptLabel = Label(hudRoot, "", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0f), new Vector2(0f, 170f), new Vector2(1100f, 50f));
-            toastLabel = Label(hudRoot, "", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(1100f, 60f));
+            toastLabel = Label(hudRoot, "", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0f, -135f), new Vector2(1100f, 60f));
             toastLabel.color = Art.Flame;
 
             buffRow = Rect("Buffs", hudRoot);
-            Place(buffRow, new Vector2(0f, 0f), new Vector2(210f, 80f), new Vector2(700f, 56f));
+            Place(buffRow, new Vector2(0f, 1f), new Vector2(130f, -150f), new Vector2(700f, 56f));
 
             panelRoot = Rect("Panels", canvas);
             Stretch(panelRoot);
@@ -67,17 +71,28 @@ namespace Candlewick
         void BuildGauge()
         {
             var gauge = Rect("WaxGauge", hudRoot);
-            Place(gauge, new Vector2(0f, 0f), new Vector2(80f, 215f), new Vector2(64f, 340f));
-            var back = gauge.gameObject.AddComponent<Image>();
+            // A bright frame keeps the gauge readable against the dark level even when it is nearly empty.
+            Place(gauge, new Vector2(0f, 1f), new Vector2(40f, -70f), new Vector2(64f, GaugeHeight));
+            var frame = Rect("Frame", gauge).gameObject.AddComponent<Image>();
+            frame.sprite = Art.Square;
+            frame.color = new Color(0.8f, 0.72f, 0.58f);
+            frame.rectTransform.anchorMin = Vector2.zero;
+            frame.rectTransform.anchorMax = Vector2.one;
+            frame.rectTransform.offsetMin = new Vector2(-4f, -4f);
+            frame.rectTransform.offsetMax = new Vector2(4f, 4f);
+            var back = Rect("Back", gauge).gameObject.AddComponent<Image>();
             back.sprite = Art.Square;
-            back.color = new Color(0.1f, 0.09f, 0.14f, 0.92f);
+            back.color = new Color(0.1f, 0.09f, 0.14f);
+            back.rectTransform.anchorMin = Vector2.zero;
+            back.rectTransform.anchorMax = Vector2.one;
+            back.rectTransform.offsetMin = back.rectTransform.offsetMax = Vector2.zero;
 
             waxFill = Rect("Fill", gauge).gameObject.AddComponent<Image>();
             waxFill.sprite = Art.Square;
             waxFill.type = Image.Type.Filled;
             waxFill.fillMethod = Image.FillMethod.Vertical;
             waxFill.fillOrigin = (int)Image.OriginVertical.Bottom;
-            waxFill.color = Art.Wax;
+            waxFill.color = Art.Sunray;
             var fillRect = waxFill.rectTransform;
             fillRect.anchorMin = Vector2.zero;
             fillRect.anchorMax = Vector2.one;
@@ -90,12 +105,12 @@ namespace Candlewick
             waxFlame.rectTransform.sizeDelta = new Vector2(58f, 84f);
             waxFlame.rectTransform.anchorMin = waxFlame.rectTransform.anchorMax = new Vector2(0.5f, 0f);
 
-            waxLabel = Label(hudRoot, "", 30, TextAnchor.UpperCenter, new Vector2(0f, 0f), new Vector2(32f, 150f), new Vector2(160f, 42f));
+            waxLabel = Label(hudRoot, "", 30, TextAnchor.UpperCenter, new Vector2(0f, 1f), new Vector2(-8f, -70f - GaugeHeight - 12f), new Vector2(160f, 42f));
         }
 
         public void Refresh()
         {
-            bool inPlay = game.State != GameState.Title;
+            bool inPlay = game.State != GameState.Title && game.State != GameState.Intro;
             hudRoot.gameObject.SetActive(inPlay);
             Cursor.visible = game.State != GameState.Playing;
             if (!inPlay) { HandleChoiceKeys(); return; }
@@ -103,19 +118,21 @@ namespace Candlewick
             var player = game.Player;
             float fraction = Mathf.Clamp01(player.Wax / player.MaxWax);
             waxFill.fillAmount = fraction;
-            waxFill.color = fraction < 0.25f ? Color.Lerp(Art.Blood, Art.Wax, Mathf.PingPong(Time.time * 3f, 1f)) : Art.Wax;
+            waxFill.color = fraction < 0.25f ? Color.Lerp(Art.Blood, Art.Sunray, Mathf.PingPong(Time.time * 3f, 1f)) : Art.Sunray;
             float flicker = 0.9f + Mathf.PerlinNoise(Time.time * 9f, 1f) * 0.25f;
-            waxFlame.rectTransform.anchoredPosition = new Vector2(0f, 6f + fraction * 328f + 26f);
+            waxFlame.rectTransform.anchoredPosition = new Vector2(0f, 6f + fraction * (GaugeHeight - 12f) + 26f);
             waxFlame.rectTransform.localScale = Vector3.one * flicker * (player.EffectiveMode == FlameMode.Flare ? 1.35f : player.EffectiveMode == FlameMode.Dim ? 0.6f : 1f);
             waxFlame.color = player.Alive ? (player.SnuffedFor > 0f ? new Color(0.6f, 0.4f, 0.9f) : Art.Flame) : Color.clear;
             waxLabel.text = $"{Mathf.CeilToInt(player.Wax)}/{Mathf.RoundToInt(player.MaxWax)}";
+            waxLabel.color = fraction < 0.25f ? Art.Blood : TextColor;
+            statLabel.text = Loc.T("Damage", "Шкода") + $" x{player.DamageMultiplier:0.0}   " + Loc.T("Speed", "Швидкість") + $" x{player.SpeedMultiplier:0.0}";
 
-            candlesLabel.text = game.CurrentGate.IsOpen
-                ? Loc.T($"The gate is open! Candles Lit: {game.LitThisNight}", $"Ворота відчинено! Запалено свічок: {game.LitThisNight}")
-                : Loc.T($"Candles Lit: {game.LitThisNight}/{GameManager.CandlesToOpen} to open the gate", $"Запалено свічок: {game.LitThisNight}/{GameManager.CandlesToOpen} до відкриття воріт");
-            candlesLabel.color = game.CurrentGate.IsOpen ? new Color(0.75f, 0.88f, 1f) : TextColor;
+            candlesLabel.text = Loc.T("Until sunrise", "До світанку") + $": {FormatTime(game.NightLeft)}";
+            candlesLabel.color = game.NightLeft < 60f ? new Color(1f, 0.62f, 0.4f) : TextColor;
+            rescueLabel.text = Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}"
+                + (game.FollowerCount > 0 ? "   " + Loc.T("With you", "З тобою") + $": {game.FollowerCount}" : "");
             int rekindles = game.RekindlesLeft();
-            timeLabel.text = Loc.T("Floor", "Поверх") + $" {game.Depth}/{GameManager.FloorCount}   {FormatTime(game.SurvivalTime)}"
+            timeLabel.text = Loc.T("Candles", "Свічки") + $": {game.LitThisNight}/{GameManager.TotalCandles}"
                 + (rekindles > 0 ? "\n" + Loc.T("Rekindles", "Відродження") + $": {rekindles}" : "");
 
             if (player.SnuffedFor > 0f) { modeLabel.text = Loc.T("SNUFFED", "ПРИГАШЕНО"); modeLabel.color = new Color(0.72f, 0.5f, 1f); }
@@ -195,25 +212,29 @@ namespace Candlewick
             redraw = ShowTitle;
             var panel = Panel(1f);
             Label(panel, "CANDLEWICK", 118, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 330f), new Vector2(1400f, 150f)).color = Art.Flame;
-            Label(panel, Loc.T("Escape the castle. The ghosts will not stop hunting you.", "Втечи із замку. Привиди не припинять полювання."), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 235f), new Vector2(1200f, 60f)).color = Muted;
+            Label(panel, Loc.T("You are the last ray of the sunset. Before sunrise, save the lost souls of the students.", "Ти останній промінь заходу. Поки не зійшло сонце, врятуй заблукані душі студентів."), 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 235f), new Vector2(1200f, 60f)).color = Muted;
             AddButton(panel, Loc.T("Start Game", "Почати гру"), new Vector2(0f, 120f), new Vector2(380f, 86f), game.StartRun);
 
             string controls = Loc.T(
-                "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Breathe fire\n" +
-                "<b>Right Click / Shift</b>  Toggle Flare: burns 3 wax/s for speed, light and a roaring wide flame\n" +
-                "<b>Q</b>  Toggle Dim: barely melts, but you are slow, weak and half blind\n" +
-                "<b>E</b>  Share 15 wax with an unlit candle once its room is clear\n\n" +
-                "Light 3 candles to open the gate on each floor, and get through all 3 floors to escape. Falling into a pit costs 15 wax.\n" +
-                "Ghosts pass through walls and can't be killed: fire only scatters them, and they stay out of candlelight.\n" +
-                "Enemies drop wax. Lit candles grant a buff, restore your wax nearby, and rekindle you once if your flame dies.",
-                "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Дихати вогнем\n" +
-                "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 воску/с за швидкість, світло й широке полум'я\n" +
-                "<b>Q</b>  Приглушений режим: майже не таєш, але ти повільний, слабкий і погано бачиш\n" +
-                "<b>E</b>  Поділитися 15 воску з незапаленою свічкою, коли кімнату зачищено\n\n" +
-                "На кожному поверсі запали 3 свічки, щоб відчинити ворота, і пройди всі 3 поверхи, щоб утекти. Падіння в яму коштує 15 воску.\n" +
-                "Привиди проходять крізь стіни, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони уникають.\n" +
-                "З ворогів падає віск. Запалена свічка дає посилення, відновлює віск поруч і один раз відроджує, якщо ти згаснеш.");
-            var help = Label(panel, controls, 30, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(1760f, 400f));
+                "<b>A / D</b>  Run     <b>W / Space</b>  Jump     <b>S</b>  Drop through a platform     <b>Mouse</b>  Aim     <b>Hold Left Click</b>  Fire\n" +
+                "<b>Right Click / Shift</b>  Toggle Flare: burns 3 light/s for speed, reach and a wide flame\n" +
+                "<b>Q</b>  Toggle Dim: barely fades, but you are slow, weak and half blind\n" +
+                "<b>E</b>  Reach out to a soul (5 light) or light a candle (15 light, once its room is clear)\n\n" +
+                "Find souls with the pale arrow. They follow you, and are saved when you bring them to a lit candle.\n" +
+                "Candles are checkpoints: they restore your light, grant a blessing and rekindle you once if you go out.\n" +
+                "Ghosts pass through walls, take your souls and can't be killed: fire only scatters them, and they fear candlelight.\n" +
+                "The more light you have, the harder you hit. The less you have, the faster you run. Pits cost 15 light.\n" +
+                "At sunrise the night ends: souls still with you are saved, the rest stay lost.",
+                "<b>A / D</b>  Біг     <b>W / Пробіл</b>  Стрибок     <b>S</b>  Зістрибнути з платформи     <b>Миша</b>  Приціл     <b>Утримуй ліву кнопку</b>  Вогонь\n" +
+                "<b>Права кнопка / Shift</b>  Режим «Спалах»: 3 світла/с за швидкість, дальність і широке полум'я\n" +
+                "<b>Q</b>  Приглушений режим: майже не згасаєш, але ти повільний, слабкий і погано бачиш\n" +
+                "<b>E</b>  Простягнути руку душі (5 світла) або запалити свічку (15 світла, коли кімнату очищено)\n\n" +
+                "Шукай душі за блідою стрілкою. Вони йдуть за тобою й рятуються, коли ти доводиш їх до запаленої свічки.\n" +
+                "Свічки це чекпоінти: відновлюють світло, дають благословення й один раз запалюють тебе знову.\n" +
+                "Привиди проходять крізь стіни, забирають душі, і їх не вбити: вогонь лише розвіює їх, а світла свічок вони бояться.\n" +
+                "Що більше світла, то сильніше ти б'єш. Що менше, то швидше бігаєш. Яма коштує 15 світла.\n" +
+                "Зі сходом сонця ніч закінчується: душі поруч із тобою рятуються, решта лишається заблуканими.");
+            var help = Label(panel, controls, 28, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(1800f, 400f));
             help.supportRichText = true;
             help.color = TextColor;
         }
@@ -241,25 +262,21 @@ namespace Candlewick
             }
         }
 
-        public void ShowFloorCleared()
+        public void ShowSunrise()
         {
-            redraw = ShowFloorCleared;
-            var panel = Panel(0.86f);
-            Label(panel, Loc.T("One floor closer to freedom", "На поверх ближче до волі"), 78, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(1400f, 110f)).color = Art.Flame;
-            Label(panel, Loc.T($"Floor {game.Depth}/{GameManager.FloorCount} behind you.  Candles saved: {game.TotalSaved}.  Time: {FormatTime(game.SurvivalTime)}", $"Поверх {game.Depth}/{GameManager.FloorCount} позаду.  Врятовано свічок: {game.TotalSaved}.  Час: {FormatTime(game.SurvivalTime)}"), 36, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 80f), new Vector2(1400f, 60f)).color = TextColor;
-            Label(panel, Loc.T("More ghosts wait below. You keep your buffs and regain some wax.", "Унизу чекає більше привидів. Посилення залишаються, а частина воску відновлюється."), 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1400f, 50f)).color = Muted;
-            AddButton(panel, Loc.T("Descend  [Enter]", "Спуститися  [Enter]"), new Vector2(0f, -100f), new Vector2(440f, 86f), game.NextFloor);
-        }
-
-        public void ShowEscaped()
-        {
-            redraw = ShowEscaped;
-            var panel = Panel(0.9f);
-            Label(panel, Loc.T("You escaped the castle", "Ти втік із замку"), 82, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1400f, 110f)).color = new Color(0.75f, 0.88f, 1f);
-            Label(panel, Loc.T("Candles saved", "Врятовано свічок") + $": {game.TotalSaved}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
-            Label(panel, Loc.T("Escape time", "Час утечі") + $": {FormatTime(game.SurvivalTime)}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(1000f, 60f)).color = TextColor;
-            Label(panel, Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
-            AddButton(panel, Loc.T("Play Again  [Enter]", "Грати знову  [Enter]"), new Vector2(0f, -130f), new Vector2(440f, 86f), game.StartRun);
+            HidePanels();
+            redraw = ShowSunrise;
+            var panel = Panel(0.72f);
+            string ending = game.Rescued == GameManager.TotalSouls
+                ? Loc.T("Every soul saw the sun", "Кожна душа побачила сонце")
+                : game.Rescued == 0
+                    ? Loc.T("The sun rose on empty halls", "Сонце зійшло над порожніми коридорами")
+                    : Loc.T("The sun has risen", "Сонце зійшло");
+            Label(panel, ending, 78, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1600f, 110f)).color = new Color(1f, 0.78f, 0.5f);
+            Label(panel, Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}", 48, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
+            Label(panel, Loc.T("Taken by ghosts", "Забрано привидами") + $": {game.LostSouls}", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(1000f, 50f)).color = Muted;
+            Label(panel, Loc.T("Candles lit", "Запалено свічок") + $": {game.LitThisNight}/{GameManager.TotalCandles}", 34, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
+            AddButton(panel, Loc.T("Another night  [Enter]", "Ще одна ніч  [Enter]"), new Vector2(0f, -130f), new Vector2(500f, 86f), game.StartRun);
         }
 
         public void ShowGameOver()
@@ -267,10 +284,10 @@ namespace Candlewick
             HidePanels();
             redraw = ShowGameOver;
             var panel = Panel(0.9f);
-            Label(panel, Loc.T("Your flame went out", "Твоє полум'я згасло"), 82, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1400f, 110f)).color = Art.Blood;
-            Label(panel, Loc.T("Candles saved", "Врятовано свічок") + $": {game.TotalSaved}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
+            Label(panel, Loc.T("The last ray went out", "Останній промінь згас"), 82, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(1400f, 110f)).color = Art.Blood;
+            Label(panel, Loc.T("Souls saved", "Врятовано душ") + $": {game.Rescued}/{GameManager.TotalSouls}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1000f, 60f)).color = TextColor;
             Label(panel, Loc.T("Survived", "Протримався") + $": {FormatTime(game.SurvivalTime)}", 42, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(1000f, 60f)).color = TextColor;
-            Label(panel, Loc.T("Reached floor", "Досягнутий поверх") + $" {game.Depth}/{GameManager.FloorCount}   " + Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
+            Label(panel, Loc.T("Shadows burned", "Спалено тіней") + $": {game.Kills}", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -22f), new Vector2(1000f, 50f)).color = Muted;
             AddButton(panel, Loc.T("Try Again  [Enter]", "Спробувати ще  [Enter]"), new Vector2(0f, -130f), new Vector2(440f, 86f), game.StartRun);
         }
 

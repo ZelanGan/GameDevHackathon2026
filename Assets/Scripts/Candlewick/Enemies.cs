@@ -212,16 +212,21 @@ namespace Candlewick
             lastHp = Hp;
             slowedFor -= dt;
 
+            // It goes for whichever is closest: the player, or a soul the player is trying to save.
             var player = Game.Player;
-            Vector2 dir = (player.Pos - Pos).normalized;
+            var prey = Game.NearestFollower(Pos);
+            bool huntsFollower = prey != null && Vector2.Distance(prey.Pos, Pos) < Vector2.Distance(player.Pos, Pos);
+            Vector2 target = huntsFollower ? prey.Pos : player.Pos;
+            Vector2 dir = (target - Pos).normalized;
             Vector2 next = Pos + dir * speed * (slowedFor > 0f ? 0.35f : 1f) * dt;
             if (Game.IsInSanctuary(Pos) || !Game.IsInSanctuary(next)) Pos = next;
 
             Sprite.transform.localPosition = new Vector3(0f, Mathf.Sin(Age * 3f) * 0.12f, 0f);
             Tint.a = 0.62f + 0.22f * Mathf.Sin(Age * 5f);
 
-            if (Vector2.Distance(Pos, player.Pos) >= Radius + 0.3f) return;
-            player.Hurt(TouchDamage, dir * 0.4f);
+            if (Vector2.Distance(Pos, target) >= Radius + 0.3f) return;
+            if (huntsFollower) Game.LoseFollower(prey);
+            else player.Hurt(TouchDamage, dir * 0.4f);
             Vanish(TouchSeconds);
         }
 

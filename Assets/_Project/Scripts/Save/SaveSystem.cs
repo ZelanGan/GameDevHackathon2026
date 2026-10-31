@@ -27,6 +27,8 @@ namespace NightTrolleybus.Save
 
         private static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
 
+        public bool HasSave => File.Exists(SavePath);
+
         public void Save()
         {
             var data = new SaveData

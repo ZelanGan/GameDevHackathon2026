@@ -19557,7 +19557,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Player.PlayerDeathHandler
   respawnPoint: {fileID: 318656674}
-  flameLoss: 25
+  flameLoss: 15
   noticeRaised: {fileID: 11400000, guid: 6a8332b756c36ee4d9a3879e7934c907, type: 2}
 --- !u!114 &2064143790
 MonoBehaviour:

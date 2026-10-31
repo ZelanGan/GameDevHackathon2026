@@ -3,6 +3,8 @@ using NightTrolleybus.Core.StateMachine;
 using NightTrolleybus.Narrative;
 using NightTrolleybus.Route;
 using NightTrolleybus.Save;
+using NightTrolleybus.UI;
+using NightTrolleybus.Vehicle.Repair;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -17,6 +19,7 @@ namespace NightTrolleybus.Core
         private const string RideState = "Ride";
         private const string StopState = "Stop";
         private const string EventStateName = "Event";
+        private const string MenuStateName = "Menu";
         private const float StrongEndingFlame = 45f;
 
         [SerializeField] private SceneLoader sceneLoader;
@@ -34,7 +37,7 @@ namespace NightTrolleybus.Core
         [SerializeField] private StringEventChannel objectiveChanged;
 
         [Header("Інтерфейс")]
-        [SerializeField] private GameObject pausePanel;
+        [SerializeField] private GameMenuView menu;
         [SerializeField] private GameObject endPanel;
         [SerializeField] private Text endLabel;
         [SerializeField] private Button restartButton;
@@ -42,13 +45,13 @@ namespace NightTrolleybus.Core
         private readonly GameStateMachine stateMachine = new GameStateMachine();
         private PauseState pauseState;
         private bool gameEnded;
+        private bool inMenu;
 
         private void Awake()
         {
             pauseState = new PauseState(this);
-            pausePanel.SetActive(false);
             endPanel.SetActive(false);
-            restartButton.onClick.AddListener(Restart);
+            restartButton.onClick.AddListener(ReturnToMenu);
         }
 
         private void OnEnable()
@@ -57,6 +60,10 @@ namespace NightTrolleybus.Core
             arrivedAtNode.Raised += OnArrived;
             stopCompleted.Raised += ShowMap;
             route.NodeSelected += OnNodeSelected;
+            menu.StartRequested += StartNewGame;
+            menu.ContinueRequested += ContinueGame;
+            menu.ResumeRequested += stateMachine.Resume;
+            menu.ExitToMenuRequested += ReturnToMenu;
         }
 
         private void OnDisable()
@@ -65,15 +72,48 @@ namespace NightTrolleybus.Core
             arrivedAtNode.Raised -= OnArrived;
             stopCompleted.Raised -= ShowMap;
             route.NodeSelected -= OnNodeSelected;
+            menu.StartRequested -= StartNewGame;
+            menu.ContinueRequested -= ContinueGame;
+            menu.ResumeRequested -= stateMachine.Resume;
+            menu.ExitToMenuRequested -= ReturnToMenu;
         }
 
         private void Start()
         {
-            if (saveSystem.TryLoad())
+            // Партія починається лише після вибору в меню, а доти час стоїть.
+            inMenu = true;
+            Time.timeScale = 0f;
+            gameStateChanged.Raise(MenuStateName);
+            menu.ShowMain(saveSystem.HasSave);
+        }
+
+        private void StartNewGame()
+        {
+            saveSystem.Delete();
+            BeginNewGame();
+        }
+
+        private void ContinueGame()
+        {
+            if (!saveSystem.TryLoad())
             {
-                ShowMap();
+                BeginNewGame();
                 return;
             }
+
+            LeaveMenu();
+            ShowMap();
+        }
+
+        private void LeaveMenu()
+        {
+            inMenu = false;
+            menu.Hide();
+        }
+
+        private void BeginNewGame()
+        {
+            LeaveMenu();
 
             // Нова гра: історія показується поверх мапи, час стоїть.
             route.Generate(Random.Range(int.MinValue, int.MaxValue));
@@ -93,7 +133,12 @@ namespace NightTrolleybus.Core
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (gameEnded || keyboard == null || !keyboard.pKey.wasPressedThisFrame)
+            if (inMenu || gameEnded || keyboard == null || !keyboard.escapeKey.wasPressedThisFrame)
+                return;
+
+            // У міні-грі ремонту Esc означає «відійти», а не паузу.
+            RepairHost repairHost = FindAnyObjectByType<RepairHost>();
+            if (repairHost != null && (repairHost.IsOpen || repairHost.LastClosedFrame == Time.frameCount))
                 return;
 
             if (stateMachine.IsPaused)
@@ -109,7 +154,13 @@ namespace NightTrolleybus.Core
             sceneLoader.Load(sceneName);
         }
 
-        public void SetPauseVisible(bool visible) => pausePanel.SetActive(visible);
+        public void SetPauseVisible(bool visible)
+        {
+            if (visible)
+                menu.ShowPause();
+            else
+                menu.Hide();
+        }
 
         public void ShowEnd(string message)
         {
@@ -168,7 +219,7 @@ namespace NightTrolleybus.Core
                 stateMachine.Change(new EndState(this, "Вогник згас. Ніч лишилася назавжди."));
         }
 
-        private void Restart()
+        private void ReturnToMenu()
         {
             Time.timeScale = 1f;
             SceneManager.LoadScene(0);

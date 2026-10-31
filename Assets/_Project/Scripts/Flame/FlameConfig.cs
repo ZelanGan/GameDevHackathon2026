@@ -26,17 +26,17 @@ namespace NightTrolleybus.Flame
     public class FlameConfig : ScriptableObject
     {
         [SerializeField] private float maxFlame = 100f;
-        [SerializeField] private float startFlame = 70f;
+        [SerializeField] private float startFlame = 85f;
         [Tooltip("Скільки полум'я втрачається за секунду без зовнішніх чинників")]
-        [SerializeField] private float baseDrainPerSecond = 0.5f;
+        [SerializeField] private float baseDrainPerSecond = 0.2f;
         [Tooltip("Запас для переходу в сильніший стан, щоб стан не мерехтів на межі порога")]
         [SerializeField] private float stateHysteresis = 2f;
         [Tooltip("Температура 0..1, нижче якої холод прискорює згасання")]
         [SerializeField] private float coldThreshold = 0.5f;
         [Tooltip("У скільки разів швидше згасає Вогник за нульової температури")]
-        [SerializeField] private float maxColdDrainMultiplier = 3f;
+        [SerializeField] private float maxColdDrainMultiplier = 2f;
         [Tooltip("У скільки разів швидше згасає Вогник за максимального страху")]
-        [SerializeField] private float maxFearDrainMultiplier = 2.5f;
+        [SerializeField] private float maxFearDrainMultiplier = 1.75f;
         [Tooltip("Від найсильнішого стану до найслабшого")]
         [SerializeField] private FlameStateSettings[] states =
         {

@@ -141,7 +141,7 @@ namespace NightTrolleybus.Core
             else if (stopScene != null)
             {
                 stateMachine.Change(new SceneState(this, StopState, stopScene, 1f, false));
-                objectiveChanged.Raise("Шукайте предмети праворуч. Щоб поїхати, поверніться до дверей на початку й натисніть E. Темрява наближається!");
+                objectiveChanged.Raise("Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!");
             }
             else if (node.Type == NodeType.Event)
                 stateMachine.Change(new EventState(this, (runner, finished) => runner.RunRandom(finished)));

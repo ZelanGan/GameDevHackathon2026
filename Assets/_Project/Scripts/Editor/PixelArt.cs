@@ -61,6 +61,18 @@ namespace NightTrolleybus.EditorTools
             { "Building_B", () => Building(2, 128, 192) },
             { "Building_C", () => Building(3, 96, 224) },
             { "Swing", Swing },
+            { "Top_Player_Idle", () => TopPerson(0) },
+            { "Top_Player_Walk_A", () => TopPerson(1) },
+            { "Top_Player_Walk_B", () => TopPerson(-1) },
+            { "Top_Shade_A", () => TopShade(0) },
+            { "Top_Shade_B", () => TopShade(1) },
+            { "Top_Floor", TopFloor },
+            { "Top_Wall", TopWall },
+            { "Top_Crate", TopCrate },
+            { "Top_Counter", TopCounter },
+            { "Top_Charger", TopCharger },
+            { "Top_Door", TopDoor },
+            { "Top_HiddenWall", TopHiddenWall },
         };
 
         /// <summary>Повертає спрайт, за потреби намалювавши його вперше.</summary>
@@ -453,6 +465,122 @@ namespace NightTrolleybus.EditorTools
                 c.Rect(x, 6 - height / 2, 1, height, new Color(1f, 1f, 1f, 0.5f + x / 90f));
             }
 
+            return c;
+        }
+
+        // Вид зверху: персонаж дивиться вправо, а в грі спрайт обертається за поглядом.
+        private static Canvas TopPerson(int step)
+        {
+            var c = new Canvas(28, 28);
+            c.Rect(16 + step * 3, 21, 7, 4, Skin);
+            c.Rect(16 - step * 3, 3, 7, 4, Skin);
+            c.Rect(9 + step * 2, 19, 10, 5, CoatDark);
+            c.Rect(9 - step * 2, 4, 10, 5, CoatDark);
+            c.Ellipse(13, 14, 8, 11, Coat);
+            c.Ellipse(11, 14, 3, 8, CoatDark);
+            c.Ellipse(15, 14, 6, 6, Cap);
+            c.Rect(20, 11, 3, 6, Boots);
+            c.Rect(14, 13, 3, 2, C(70, 90, 130));
+            return c;
+        }
+
+        private static Canvas TopShade(int frame)
+        {
+            var c = new Canvas(30, 30);
+            Color body = C(44, 36, 74);
+            Color edge = C(76, 62, 120);
+            c.Ellipse(15, 15, 13, 13, edge);
+            c.Ellipse(15, 15, 11, 11, body);
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = (i + frame * 0.5f) * Mathf.PI / 4f;
+                c.Rect(14 + (int)(Mathf.Cos(angle) * 13f), 14 + (int)(Mathf.Sin(angle) * 13f), 3, 3, body);
+            }
+
+            c.Rect(9, 16, 4, 4, C(230, 225, 255));
+            c.Rect(17, 16, 4, 4, C(230, 225, 255));
+            c.Rect(11, 17, 2, 2, Boots);
+            c.Rect(19, 17, 2, 2, Boots);
+            return c;
+        }
+
+        private static Canvas TopFloor()
+        {
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(150, 146, 140));
+            c.Rect(0, 0, 32, 1, C(110, 106, 100));
+            c.Rect(0, 0, 1, 32, C(110, 106, 100));
+            c.Rect(7, 11, 3, 2, C(128, 124, 118));
+            c.Rect(21, 22, 4, 2, C(128, 124, 118));
+            c.Rect(25, 6, 2, 3, C(170, 166, 160));
+            return c;
+        }
+
+        private static Canvas TopWall()
+        {
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(96, 76, 72));
+            c.Rect(0, 0, 32, 2, C(60, 48, 46));
+            c.Rect(0, 30, 32, 2, C(140, 118, 110));
+            c.Rect(0, 15, 32, 1, C(60, 48, 46));
+            c.Rect(10, 16, 1, 14, C(60, 48, 46));
+            c.Rect(22, 2, 1, 13, C(60, 48, 46));
+            return c;
+        }
+
+        private static Canvas TopCrate()
+        {
+            var c = new Canvas(48, 48);
+            c.Rect(0, 0, 48, 48, WoodDark);
+            c.Rect(3, 3, 42, 42, Wood);
+            for (int y = 11; y < 45; y += 8)
+                c.Rect(3, y, 42, 1, WoodDark);
+            c.Rect(3, 3, 5, 42, WoodDark);
+            c.Rect(40, 3, 5, 42, WoodDark);
+            return c;
+        }
+
+        private static Canvas TopCounter()
+        {
+            var c = new Canvas(38, 38);
+            c.Rect(0, 0, 38, 38, WoodDark);
+            c.Rect(2, 2, 34, 34, Wood);
+            c.Rect(6, 17, 26, 4, Metal);
+            c.Rect(26, 12, 5, 14, MetalDark);
+            return c;
+        }
+
+        private static Canvas TopCharger()
+        {
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(70, 96, 130));
+            c.Rect(4, 4, 24, 24, C(30, 44, 60));
+            c.Rect(14, 8, 5, 8, C(230, 220, 90));
+            c.Rect(11, 15, 6, 8, C(230, 220, 90));
+            return c;
+        }
+
+        private static Canvas TopDoor()
+        {
+            var c = new Canvas(32, 64);
+            c.Rect(0, 0, 32, 64, C(124, 62, 50));
+            c.Rect(0, 0, 32, 5, C(226, 204, 150));
+            c.Rect(0, 59, 32, 5, C(226, 204, 150));
+            c.Rect(24, 8, 8, 48, C(80, 230, 130));
+            c.Rect(4, 12, 16, 40, C(86, 84, 84));
+            return c;
+        }
+
+        private static Canvas TopHiddenWall()
+        {
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(96, 76, 72));
+            c.Rect(0, 15, 32, 1, C(60, 48, 46));
+            c.Rect(10, 16, 1, 16, C(60, 48, 46));
+            c.Rect(22, 0, 1, 15, C(60, 48, 46));
+            // Ледь помітна фіолетова тріщина: уважний гравець здогадається підсвітити це місце.
+            for (int i = 4; i < 28; i += 3)
+                c.Rect(i, i, 2, 2, C(150, 134, 220));
             return c;
         }
 

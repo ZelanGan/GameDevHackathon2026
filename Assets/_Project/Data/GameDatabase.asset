@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e6dd2d577c12fc4aaf10406d3c2f702, type: 3}
+  m_Name: GameDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Save.GameDatabase
+  items:
+  - {fileID: 11400000, guid: c0eaf6ba539542a49ae4c583b5237063, type: 2}
+  - {fileID: 11400000, guid: e3a82adcf157b144db6a299ec27c9926, type: 2}
+  - {fileID: 11400000, guid: 81b55968d56aa434ea7fa1abc7ae1123, type: 2}
+  - {fileID: 11400000, guid: 731e7bb6a43be5048a07b42c544781bd, type: 2}
+  weapons:
+  - {fileID: 11400000, guid: 7e829f3f68e5fad41b5cc5aef45205cd, type: 2}
+  - {fileID: 11400000, guid: 57406581f259c12468485afa4fe8536f, type: 2}
+  - {fileID: 11400000, guid: f96f1cd7a9f88bc4683a8e4c584467fa, type: 2}
+  passengers:
+  - {fileID: 11400000, guid: 06aa7686da2c9b54799b79e858935e22, type: 2}
+  - {fileID: 11400000, guid: 75ff225dc2c479e4db9369c931f403fa, type: 2}
+  - {fileID: 11400000, guid: d10350d407a3d024bba0db402f6d1d0f, type: 2}
+  - {fileID: 11400000, guid: ce1eb4847b250ca4b82056b34bd4806b, type: 2}

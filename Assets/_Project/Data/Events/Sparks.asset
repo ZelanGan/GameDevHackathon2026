@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e01966adce41742ae92e8763d6e968, type: 3}
+  m_Name: Sparks
+  m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Narrative.RoadEventData
+  title: "\u041E\u0431\u0456\u0440\u0432\u0430\u043D\u0438\u0439 \u0434\u0440\u0456\u0442"
+  description: "\u041D\u0430\u0434 \u0434\u043E\u0440\u043E\u0433\u043E\u044E \u0433\u043E\u0439\u0434\u0430\u0454\u0442\u044C\u0441\u044F \u0434\u0440\u0456\u0442 \u0456 \u0441\u0438\u043F\u043B\u0435\u0442\u044C\u0441\u044F \u0456\u0441\u043A\u0440\u0430\u043C\u0438. \u0421\u0442\u0440\u0443\u043C \u0449\u0435 \u0454."
+  choices:
+  - text: "\u041F\u0456\u0434'\u0454\u0434\u043D\u0430\u0442\u0438\u0441\u044F \u043D\u0430 \u0445\u043E\u0434\u0443"
+    outcome: "\u0404 \u0437\u0430\u0440\u044F\u0434! \u0410\u043B\u0435 \u0440\u043E\u0437\u0440\u044F\u0434 \u0431\u043E\u043B\u044F\u0447\u0435 \u0432\u0434\u0430\u0440\u0438\u0432 \u0456 \u043F\u043E \u0412\u043E\u0433\u043D\u0438\u043A\u0443."
+    requiredItem: {fileID: 0}
+    rewardItem: {fileID: 0}
+    flameChange: -8
+    temperatureChange: 0
+    powerChange: 25
+  - text: "\u041E\u0431'\u0457\u0445\u0430\u0442\u0438"
+    outcome: "\u041E\u0431'\u0457\u0437\u0434 \u043A\u043E\u0448\u0442\u0443\u0454 \u0442\u0440\u043E\u0445\u0438 \u0435\u043D\u0435\u0440\u0433\u0456\u0457, \u0437\u0430\u0442\u0435 \u0432\u0441\u0456 \u0446\u0456\u043B\u0456."
+    requiredItem: {fileID: 0}
+    rewardItem: {fileID: 0}
+    flameChange: 0
+    temperatureChange: 0
+    powerChange: -5

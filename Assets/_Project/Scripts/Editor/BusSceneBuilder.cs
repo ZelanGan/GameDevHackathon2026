@@ -63,7 +63,7 @@ namespace NightTrolleybus.EditorTools
             CreateFlame(flameSeat.transform);
             CreateAbilities(logic, flameSeat.transform, true);
 
-            CreateFollowCameras(player.transform);
+            CreateFollowCameras(player.transform, 5f, 1.2f);
 
             var repairHost = logic.AddComponent<RepairHost>();
             Wire(repairHost, ("playerMotor", motor), ("repairTextChanged", Channel<StringEventChannel>("RepairTextChanged")));
@@ -203,7 +203,7 @@ namespace NightTrolleybus.EditorTools
             body.freezeRotation = true;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
             player.AddComponent<BoxCollider2D>().size = new Vector2(0.8f, 1.6f);
-            SetBool(player.AddComponent<PlayerMotor2D>(), "canJump", false);
+            player.AddComponent<PlayerMotor2D>();
             Wire(player.AddComponent<PlayerInteractor>(), ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")));
 
             CreatePlayerBody(player);
@@ -256,7 +256,7 @@ namespace NightTrolleybus.EditorTools
             SetString(deviceSwitch, "deviceName", deviceName);
         }
 
-        internal static void CreateFollowCameras(Transform player)
+        internal static void CreateFollowCameras(Transform player, float orthographicSize, float offsetY)
         {
             Camera camera = CreateMainCamera();
             camera.gameObject.AddComponent<CinemachineBrain>();
@@ -266,12 +266,12 @@ namespace NightTrolleybus.EditorTools
             var follow = followObject.AddComponent<CinemachineCamera>();
             follow.Follow = player;
             LensSettings lens = LensSettings.Default;
-            lens.OrthographicSize = 5f;
+            lens.OrthographicSize = orthographicSize;
             follow.Lens = lens;
 
             var composer = followObject.AddComponent<CinemachinePositionComposer>();
             composer.CameraDistance = 10f;
-            composer.TargetOffset = new Vector3(0f, 1.2f, 0f);
+            composer.TargetOffset = new Vector3(0f, offsetY, 0f);
             composer.Damping = new Vector3(0.8f, 0.5f, 0f);
         }
     }

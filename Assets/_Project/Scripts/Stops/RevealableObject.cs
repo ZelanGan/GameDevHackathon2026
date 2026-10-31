@@ -5,12 +5,14 @@ using UnityEngine;
 
 namespace NightTrolleybus.Stops
 {
-    /// <summary>Прихований предмет або прохід: існує лише під час Підсвічування й у радіусі світла Вогника.</summary>
+    /// <summary>Прихований предмет існує лише під час Підсвічування й у радіусі світла Вогника, а прихований прохід у цей час відкривається.</summary>
     public class RevealableObject : MonoBehaviour
     {
         [SerializeField] private FlameConfig config;
         [SerializeField] private BoolEventChannel revealChanged;
         [SerializeField] private float fadeSpeed = 4f;
+        [Tooltip("Навпаки: це стіна, що видима й заступає шлях, а під Підсвічуванням зникає")]
+        [SerializeField] private bool hiddenPassage;
 
         private SpriteRenderer[] renderers;
         private Collider2D[] colliders;
@@ -27,6 +29,7 @@ namespace NightTrolleybus.Stops
             for (int i = 0; i < renderers.Length; i++)
                 baseColors[i] = renderers[i].color;
 
+            alpha = hiddenPassage ? 1f : 0f;
             Apply();
         }
 
@@ -40,7 +43,7 @@ namespace NightTrolleybus.Stops
 
         private void Update()
         {
-            float target = IsLit() ? 1f : 0f;
+            float target = IsLit() != hiddenPassage ? 1f : 0f;
             if (Mathf.Approximately(alpha, target))
                 return;
 

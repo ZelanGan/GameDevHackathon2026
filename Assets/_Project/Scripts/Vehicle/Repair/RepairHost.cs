@@ -19,6 +19,9 @@ namespace NightTrolleybus.Vehicle.Repair
 
         public bool IsOpen => minigame != null;
 
+        /// <summary>Кадр, у якому закрилася міні-гра: той самий Esc не має ще й ставити паузу.</summary>
+        public int LastClosedFrame { get; private set; } = -1;
+
         public void Open(FaultType faultToRepair)
         {
             if (IsOpen)
@@ -73,6 +76,7 @@ namespace NightTrolleybus.Vehicle.Repair
         private void Close()
         {
             minigame = null;
+            LastClosedFrame = Time.frameCount;
             repairTextChanged.Raise(string.Empty);
             playerMotor.SetLocked(false);
         }

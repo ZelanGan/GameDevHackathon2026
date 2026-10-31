@@ -18,6 +18,20 @@ namespace NightTrolleybus.Items
         public string DisplayName => displayName;
         public Sprite Icon => icon;
 
+        public string Description
+        {
+            get
+            {
+                if (!IsUsable)
+                    return "Не використовується: це плата в магазині зброї";
+
+                var parts = new string[effects.Length];
+                for (int i = 0; i < effects.Length; i++)
+                    parts[i] = effects[i].Description;
+                return string.Join(", ", parts);
+            }
+        }
+
         /// <summary>Передає предмет гравцю. Без інвентаря в сцені предмет спрацьовує одразу.</summary>
         public bool Give()
         {

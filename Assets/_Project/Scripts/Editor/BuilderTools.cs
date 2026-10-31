@@ -245,13 +245,15 @@ namespace NightTrolleybus.EditorTools
         public static ItemData GetOrCreateItem(string assetName, string id, string displayName, ItemEffect effect)
         {
             string path = $"{Root}/Data/Items/{assetName}.asset";
-            if (File.Exists(path))
-                return AssetDatabase.LoadAssetAtPath<ItemData>(path);
-
+            bool exists = File.Exists(path);
             var item = GetOrCreate<ItemData>(path);
+            // Значок оновлюємо і в наявних предметах: раніше там стояв порожній квадрат.
+            Wire(item, ("icon", PixelArt.Get($"Item_{id}")));
+            if (exists)
+                return item;
+
             SetString(item, "id", id);
             SetString(item, "displayName", displayName);
-            Wire(item, ("icon", Square));
             WireArray(item, "effects", effect != null ? new Object[] { effect } : new Object[0]);
             return item;
         }

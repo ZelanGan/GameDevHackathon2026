@@ -1,6 +1,7 @@
 using System.Collections;
 using NightTrolleybus.Items;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace NightTrolleybus.Player
@@ -28,7 +29,9 @@ namespace NightTrolleybus.Player
         private void Update()
         {
             cooldownTimer -= Time.deltaTime;
-            if (!motor.IsLocked && cooldownTimer <= 0f && attackAction.WasPressedThisFrame())
+            // Натискання по інвентарю чи іншому інтерфейсу не має бути ударом.
+            bool overInterface = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            if (!motor.IsLocked && !overInterface && cooldownTimer <= 0f && attackAction.WasPressedThisFrame())
                 Attack();
         }
 

@@ -3,34 +3,31 @@ using UnityEngine.InputSystem;
 
 namespace NightTrolleybus.Player
 {
-    /// <summary>Рух гравця через Rigidbody2D: хода та, поза салоном, стрибок.</summary>
+    /// <summary>Рух гравця через Rigidbody2D: у салоні вид збоку, на зупинках вид зверху.</summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerMotor2D : MonoBehaviour
     {
         [SerializeField] private float speed = 4f;
-        [SerializeField] private bool canJump = true;
-        [SerializeField] private float jumpSpeed = 8f;
+        [Tooltip("Вид зверху: рух у всіх напрямках без гравітації, погляд за курсором")]
+        [SerializeField] private bool topDown;
 
         private Rigidbody2D body;
         private InputAction moveAction;
-        private InputAction jumpAction;
-        private ContactFilter2D groundFilter;
-        private float input;
+        private Vector2 input;
         private bool locked;
         private bool warnedNoKeyboard;
 
-        /// <summary>Напрямок погляду: 1 вправо, -1 вліво.</summary>
-        public float Facing { get; private set; } = 1f;
+        /// <summary>Куди дивиться гравець. Завжди одиничний вектор.</summary>
+        public Vector2 FacingDirection { get; private set; } = Vector2.right;
+        public bool IsTopDown => topDown;
         public bool IsLocked => locked;
-        public bool IsGrounded => body.IsTouching(groundFilter);
 
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
             moveAction = InputSystem.actions.FindAction("Player/Move", true);
-            jumpAction = InputSystem.actions.FindAction("Player/Jump", true);
-            // Опорою вважається лише поверхня, нормаль якої дивиться вгору.
-            groundFilter = new ContactFilter2D { useNormalAngle = true, minNormalAngle = 45f, maxNormalAngle = 135f };
+            if (topDown)
+                body.gravityScale = 0f;
         }
 
         /// <summary>Блокує рух, наприклад коли гравець сидить за кермом.</summary>
@@ -45,14 +42,35 @@ namespace NightTrolleybus.Player
                 Debug.LogWarning("[Рух] Input System не бачить клавіатуру. Спробуйте перезапустити редактор.");
             }
 
-            input = locked ? 0f : moveAction.ReadValue<Vector2>().x;
-            if (input != 0f)
-                Facing = Mathf.Sign(input);
+            input = locked ? Vector2.zero : moveAction.ReadValue<Vector2>();
+            if (!topDown)
+                input.y = 0f;
 
-            if (!locked && canJump && jumpAction.WasPressedThisFrame() && IsGrounded)
-                body.linearVelocity = new Vector2(body.linearVelocity.x, jumpSpeed);
+            UpdateFacing();
         }
 
-        private void FixedUpdate() => body.linearVelocity = new Vector2(input * speed, body.linearVelocity.y);
+        private void UpdateFacing()
+        {
+            if (topDown && Mouse.current != null && Camera.main != null)
+            {
+                Vector2 cursor = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                Vector2 toCursor = cursor - (Vector2)transform.position;
+                if (toCursor.sqrMagnitude > 0.01f)
+                    FacingDirection = toCursor.normalized;
+            }
+            else if (input != Vector2.zero)
+            {
+                FacingDirection = input.normalized;
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            // Діагональ не має бути швидшою за рух по прямій.
+            if (topDown)
+                body.linearVelocity = Vector2.ClampMagnitude(input, 1f) * speed;
+            else
+                body.linearVelocity = new Vector2(input.x * speed, body.linearVelocity.y);
+        }
     }
 }

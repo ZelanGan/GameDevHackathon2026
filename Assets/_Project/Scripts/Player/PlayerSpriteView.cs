@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace NightTrolleybus.Player
 {
-    /// <summary>Малює гравця: стоїть або йде залежно від швидкості, дивиться в напрямку руху.</summary>
+    /// <summary>Малює гравця: стоїть або йде за швидкістю. Збоку розвертається дзеркально, зверху обертається за поглядом.</summary>
     public class PlayerSpriteView : MonoBehaviour
     {
         [SerializeField] private PlayerMotor2D motor;
@@ -14,11 +14,16 @@ namespace NightTrolleybus.Player
 
         private void Update()
         {
-            bool isWalking = Mathf.Abs(body.linearVelocity.x) > 0.1f;
+            bool isWalking = body.linearVelocity.sqrMagnitude > 0.01f;
             spriteRenderer.sprite = isWalking
                 ? walkFrames[(int)(Time.time * framesPerSecond) % walkFrames.Length]
                 : idleFrame;
-            spriteRenderer.flipX = motor.Facing < 0f;
+
+            Vector2 facing = motor.FacingDirection;
+            if (motor.IsTopDown)
+                spriteRenderer.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(facing.y, facing.x) * Mathf.Rad2Deg);
+            else if (facing.x != 0f)
+                spriteRenderer.flipX = facing.x < 0f;
         }
     }
 }

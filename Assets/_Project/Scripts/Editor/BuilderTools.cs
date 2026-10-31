@@ -165,14 +165,15 @@ namespace NightTrolleybus.EditorTools
         }
 
         /// <summary>Тіло гравця зі спрайтом і анімацією ходи.</summary>
-        public static void CreatePlayerBody(GameObject player)
+        public static void CreatePlayerBody(GameObject player, string spritePrefix = "")
         {
-            GameObject body = CreateArt("Body", player.transform, Vector3.zero, "Player_Idle", 5);
+            Sprite idle = PixelArt.Get($"{spritePrefix}Player_Idle");
+            GameObject body = CreateArt("Body", player.transform, Vector3.zero, $"{spritePrefix}Player_Idle", 5);
             var view = player.AddComponent<PlayerSpriteView>();
             Wire(view,
                 ("motor", player.GetComponent<PlayerMotor2D>()), ("body", player.GetComponent<Rigidbody2D>()),
-                ("spriteRenderer", body.GetComponent<SpriteRenderer>()), ("idleFrame", PixelArt.Get("Player_Idle")));
-            WireArray(view, "walkFrames", new Object[] { PixelArt.Get("Player_Walk_A"), PixelArt.Get("Player_Idle"), PixelArt.Get("Player_Walk_B"), PixelArt.Get("Player_Idle") });
+                ("spriteRenderer", body.GetComponent<SpriteRenderer>()), ("idleFrame", idle));
+            WireArray(view, "walkFrames", new Object[] { PixelArt.Get($"{spritePrefix}Player_Walk_A"), idle, PixelArt.Get($"{spritePrefix}Player_Walk_B"), idle });
         }
 
         public static void CreateFlame(Transform parent)

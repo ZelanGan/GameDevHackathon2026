@@ -10,7 +10,9 @@ namespace NightTrolleybus.Route
     {
         [SerializeField] private BusDriveController bus;
         [Tooltip("Скільки секунд триває перегін на повній швидкості")]
-        [SerializeField] private float secondsAtFullSpeed = 30f;
+        [SerializeField] private float secondsAtFullSpeed = 35f;
+        [Tooltip("Перший перегін партії: коротший, щоб гравець швидше дістався до першої події чи зупинки")]
+        [SerializeField] private float firstTripSeconds = 10f;
         [Tooltip("Пройдений шлях у діапазоні 0..1")]
         [SerializeField] private FloatEventChannel tripChanged;
         [SerializeField] private VoidEventChannel arrivedAtNode;
@@ -18,6 +20,7 @@ namespace NightTrolleybus.Route
 
         private RouteNode target;
         private float progress;
+        private float tripSeconds;
         private string currentObjective;
 
         public bool IsArrived { get; private set; }
@@ -27,7 +30,9 @@ namespace NightTrolleybus.Route
 
         private void Start()
         {
-            target = FindAnyObjectByType<RouteManager>().Target;
+            RouteManager route = FindAnyObjectByType<RouteManager>();
+            target = route.Target;
+            tripSeconds = route.Current == null ? firstTripSeconds : secondsAtFullSpeed;
             tripChanged.Raise(0f);
         }
 
@@ -35,7 +40,7 @@ namespace NightTrolleybus.Route
         {
             if (!IsArrived)
             {
-                progress = Mathf.Clamp01(progress + bus.Speed * Time.deltaTime / secondsAtFullSpeed);
+                progress = Mathf.Clamp01(progress + bus.Speed * Time.deltaTime / tripSeconds);
                 tripChanged.Raise(progress);
 
                 if (progress >= 1f)
@@ -70,7 +75,7 @@ namespace NightTrolleybus.Route
             if (GameContext.Faults != null && GameContext.Faults.IsActive(FaultType.PolesOff))
                 return "Штанги злетіли, тролейбус не їде. Підійдіть до червоної станції й натисніть E";
             if (GameContext.Power != null && GameContext.Power.Current <= 0f)
-                return "Немає енергії. Використайте акумулятор: Tab вибрати, Q застосувати";
+                return "Немає енергії! Застосуйте акумулятор (Q) або їдьте за кермом на W: аварійний хід повільний і палить Вогника";
 
             string kind = target.Type.StopScene() != null ? "зупинка" : "без зупинки";
             if (bus.IsDriving)

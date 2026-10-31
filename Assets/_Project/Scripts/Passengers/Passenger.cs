@@ -43,7 +43,10 @@ namespace NightTrolleybus.Passengers
             if (PendingGift != null)
             {
                 if (PendingGift.Give())
+                {
                     entry.GiftTaken = true;
+                    GameContext.Audio?.Play(SoundId.Pickup);
+                }
             }
             else if (manager.CanLeave)
             {

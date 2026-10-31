@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Player;
 using UnityEngine;
 
@@ -27,6 +28,10 @@ namespace NightTrolleybus.Vehicle
                 : FindAnyObjectByType<CabinLight>();
         }
 
-        public void Interact() => device.Toggle();
+        public void Interact()
+        {
+            device.Toggle();
+            GameContext.Audio?.Play(SoundId.DeviceSwitch);
+        }
     }
 }

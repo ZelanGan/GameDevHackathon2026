@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Core.Events;
 using NightTrolleybus.Items;
 using UnityEngine;
@@ -55,6 +56,7 @@ namespace NightTrolleybus.UI
 
         private void OnSlotClicked(int index, int clickCount)
         {
+            GameContext.Audio?.Play(SoundId.UiClick);
             inventory.Select(index);
             // Подвійне натискання одразу використовує предмет.
             if (clickCount >= 2 && index == inventory.SelectedIndex && index < inventory.Items.Count)

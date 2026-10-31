@@ -32,13 +32,18 @@ namespace NightTrolleybus.Items
             {
                 GameContext.Inventory.TryRemove(costItem, costCount);
                 FindAnyObjectByType<PlayerLoadout>().Equip(rewardWeapon);
+                GameContext.Audio?.Play(SoundId.Lock);
                 noticeRaised.Raise($"Нова зброя: {rewardWeapon.DisplayName}");
                 return;
             }
 
             // Спершу забираємо плату, щоб місце звільнилося під нагороду.
             GameContext.Inventory.TryRemove(costItem, costCount);
-            if (!GameContext.Inventory.TryAdd(rewardItem))
+            if (GameContext.Inventory.TryAdd(rewardItem))
+            {
+                GameContext.Audio?.Play(SoundId.Pickup);
+            }
+            else
             {
                 for (int i = 0; i < costCount; i++)
                     GameContext.Inventory.TryAdd(costItem);

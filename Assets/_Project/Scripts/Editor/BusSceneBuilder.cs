@@ -54,7 +54,7 @@ namespace NightTrolleybus.EditorTools
             CreateDevices(bus, motor, trip);
 
             var passengerManager = logic.AddComponent<PassengerManager>();
-            Wire(passengerManager, ("bus", bus), ("trip", trip), ("sprite", PixelArt.Get("Passenger")), ("material", LitMaterial), ("noticeRaised", noticeRaised));
+            Wire(passengerManager, ("bus", bus), ("trip", trip), ("sprite", PixelArt.Get("Passenger")), ("material", LitMaterial), ("friendlyMaterial", UnlitMaterial), ("noticeRaised", noticeRaised));
             WireArray(passengerManager, "pool", passengerPool);
             WireArray(passengerManager, "seats", passengerSeats);
 
@@ -63,7 +63,7 @@ namespace NightTrolleybus.EditorTools
             CreateFlame(flameSeat.transform);
             CreateAbilities(logic, flameSeat.transform, true);
 
-            CreateFollowCameras(player.transform, 5f, 1.2f);
+            CreateFollowCameras(player.transform, 3.3333333f, 1.2f);
 
             var repairHost = logic.AddComponent<RepairHost>();
             Wire(repairHost, ("playerMotor", motor), ("repairTextChanged", Channel<StringEventChannel>("RepairTextChanged")));
@@ -181,7 +181,8 @@ namespace NightTrolleybus.EditorTools
             CreateArt("Seat_Flame", interior, new Vector3(1.8f, -1.5f, 0f), "Seat", -2);
 
             // Вогник сидить окремо, а пасажири займають решту сидінь.
-            float[] passengerSeatPositions = { -5.5f, -1.5f, 4f };
+            // Перше місце поруч із Вогником: так пасажира видно, щойно він зайшов.
+            float[] passengerSeatPositions = { 4f, -1.5f, -5.5f };
             var seats = new Transform[passengerSeatPositions.Length];
             for (int i = 0; i < seats.Length; i++)
             {

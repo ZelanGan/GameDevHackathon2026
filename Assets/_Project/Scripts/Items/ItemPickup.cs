@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using UnityEngine;
 
 namespace NightTrolleybus.Items
@@ -14,7 +15,10 @@ namespace NightTrolleybus.Items
                 return;
 
             if (item.Give())
+            {
+                GameContext.Audio?.Play(SoundId.Pickup);
                 Destroy(gameObject);
+            }
         }
     }
 }

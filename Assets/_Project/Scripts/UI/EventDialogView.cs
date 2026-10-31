@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NightTrolleybus.Core;
 using NightTrolleybus.Narrative;
 using UnityEngine;
 using UnityEngine.UI;
@@ -80,7 +81,11 @@ namespace NightTrolleybus.UI
 
             var button = image.gameObject.AddComponent<Button>();
             button.interactable = available;
-            button.onClick.AddListener(() => onClick());
+            button.onClick.AddListener(() =>
+            {
+                GameContext.Audio?.Play(SoundId.UiClick);
+                onClick();
+            });
 
             var label = new GameObject("Label").AddComponent<Text>();
             label.transform.SetParent(image.transform, false);

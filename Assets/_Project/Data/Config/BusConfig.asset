@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Vehicle.BusConfig
   throttleChangePerSecond: 0.5
   accelerationPerSecond: 0.25
-  powerPerSecondAtFullSpeed: 0.7
+  powerPerSecondAtFullSpeed: 0.6

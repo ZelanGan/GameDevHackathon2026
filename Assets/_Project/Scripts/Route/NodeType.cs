@@ -25,6 +25,20 @@ namespace NightTrolleybus.Route
             }
         }
 
+        /// <summary>Що гравець отримує на цьому вузлі: підказка на мапі.</summary>
+        public static string Benefit(this NodeType type)
+        {
+            switch (type)
+            {
+                case NodeType.Depot: return "+ енергія";
+                case NodeType.Supermarket: return "+ свічки";
+                case NodeType.GunShop: return "зброя за квитки";
+                case NodeType.Event: return "вибір і наслідки";
+                case NodeType.EmptyRoad: return "без зупинки";
+                default: return "фінал";
+            }
+        }
+
         /// <summary>Сцена зупинки або null, якщо на цьому вузлі пішки не виходять.</summary>
         public static string StopScene(this NodeType type)
         {

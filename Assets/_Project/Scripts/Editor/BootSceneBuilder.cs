@@ -68,7 +68,7 @@ namespace NightTrolleybus.EditorTools
             Wire(Child("VehicleFaults", root).AddComponent<VehicleFaults>(), ("faultsChanged", Channel<VoidEventChannel>("FaultsChanged")));
 
             var heater = Child("Heater", root).AddComponent<Heater>();
-            SetFloat(heater, "powerPerSecond", 0.8f);
+            SetFloat(heater, "powerPerSecond", 0.7f);
             Wire(heater, ("runningChanged", heaterRunning));
             var cabinLight = Child("CabinLight", root).AddComponent<CabinLight>();
             SetFloat(cabinLight, "powerPerSecond", 0.25f);
@@ -100,6 +100,8 @@ namespace NightTrolleybus.EditorTools
             volume.sharedProfile = GetOrCreateVolumeProfile();
             Wire(volumeObject.AddComponent<FlamePostFx>(), ("config", FlameSettings), ("flameStateChanged", flameState));
 
+            CreateAudio(root, gameStateChanged);
+
             var eventSystem = Child("EventSystem", root);
             eventSystem.AddComponent<EventSystem>();
             eventSystem.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
@@ -130,6 +132,7 @@ namespace NightTrolleybus.EditorTools
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")));
 
             GameMenuView menu = CreateMenu(root);
+            CutsceneView cutscene = CreateCutscene(root);
             GameObject endPanel = CreatePanel("EndPanel", hud.transform, string.Empty);
             Text endLabel = endPanel.GetComponentInChildren<Text>();
             endLabel.alignment = TextAnchor.LowerCenter;
@@ -142,7 +145,7 @@ namespace NightTrolleybus.EditorTools
                 ("stopCompleted", Channel<VoidEventChannel>("StopCompleted")), ("inBusChanged", inBusChanged),
                 ("gameStateChanged", gameStateChanged), ("noticeRaised", noticeRaised),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")),
-                ("menu", menu), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
+                ("menu", menu), ("cutscene", cutscene), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), BootPath);
             AssetDatabase.SaveAssets();
@@ -249,8 +252,68 @@ namespace NightTrolleybus.EditorTools
                 ("fearChanged", fearChanged), ("healthLabel", healthLabel), ("darknessLabel", darknessLabel));
 
             Wire(hud.AddComponent<HudPanelSwitcher>(),
-                ("gameStateChanged", gameStateChanged), ("ridePanel", ridePanel), ("stopPanel", stopPanel));
+                ("gameStateChanged", gameStateChanged), ("ridePanel", ridePanel), ("stopPanel", stopPanel),
+                ("inventoryPanel", inventoryPanel.gameObject));
             return hud;
+        }
+
+        private static AudioClip Sfx(string fileName) =>
+            AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/SFX/{fileName}.wav");
+
+        private static AudioClip Music(string fileName) =>
+            AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/Music/{fileName}.wav");
+
+        private static void CreateAudio(GameObject root, StringEventChannel gameStateChanged)
+        {
+            // Слухач живе в Boot, бо меню показується ще без жодної камери.
+            GameObject audioObject = Child("GameAudio", root);
+            audioObject.AddComponent<AudioListener>();
+            var audio = audioObject.AddComponent<GameAudio>();
+            Wire(audio,
+                ("engineLoop", Sfx("Generated/engine_loop")), ("windLoop", Sfx("white_noise_long")), ("darknessLoop", Sfx("ghost_long")),
+                ("calmMusic", Music("music_calm")), ("rideMusic", Music("music_ride")), ("stopMusic", Music("music_stop")),
+                ("busSpeedChanged", Channel<FloatEventChannel>("BusSpeedChanged")),
+                ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")),
+                ("gameStateChanged", gameStateChanged));
+
+            (SoundId id, string file, float volume)[] sounds =
+            {
+                (SoundId.UiClick, "controller_button_press", 0.6f),
+                (SoundId.DeviceSwitch, "controller_button_press_2", 0.7f),
+                (SoundId.DoorOpen, "industrial_door_open", 0.8f),
+                (SoundId.DoorClose, "industrial_door_close", 0.8f),
+                (SoundId.DoorKnock, "door_knock", 1f),
+                (SoundId.FlameFed, "fire_lighting", 0.9f),
+                (SoundId.Flash, "grow_big", 0.9f),
+                (SoundId.Reveal, "white_noise_short", 0.45f),
+                (SoundId.Lose, "lose", 1f),
+                (SoundId.Victory, "Generated/victory", 0.8f),
+                (SoundId.Lock, "lock_lock", 0.8f),
+                (SoundId.Spark, "Generated/spark", 0.6f),
+                (SoundId.Thump, "Generated/thump", 0.9f),
+                (SoundId.LineFlicker, "white_noise_short", 0.35f),
+                (SoundId.RepairDone, "Generated/repair_ok", 0.6f),
+                (SoundId.PowerUp, "Generated/power_up", 0.6f),
+                (SoundId.Pickup, "Generated/pickup", 0.5f),
+                (SoundId.Swing, "Generated/swing", 0.5f),
+                (SoundId.Hit, "Generated/hit", 0.8f),
+                (SoundId.Hurt, "Generated/hurt", 0.6f),
+                (SoundId.Step, "Generated/step", 0.18f),
+                (SoundId.EnemyAppear, "ghost", 0.7f),
+            };
+
+            var serialized = new SerializedObject(audio);
+            SerializedProperty array = serialized.FindProperty("sounds");
+            array.arraySize = sounds.Length;
+            for (int i = 0; i < sounds.Length; i++)
+            {
+                SerializedProperty element = array.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("id").enumValueIndex = (int)sounds[i].id;
+                element.FindPropertyRelative("clip").objectReferenceValue = Sfx(sounds[i].file);
+                element.FindPropertyRelative("volume").floatValue = sounds[i].volume;
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static GameMenuView CreateMenu(GameObject root)
@@ -268,6 +331,22 @@ namespace NightTrolleybus.EditorTools
                 ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
             WireArray(menu, "flameFrames", new Object[] { PixelArt.Get("Flame_A"), PixelArt.Get("Flame_B"), PixelArt.Get("Flame_A"), PixelArt.Get("Flame_C") });
             return menu;
+        }
+
+        private static CutsceneView CreateCutscene(GameObject root)
+        {
+            GameObject canvasObject = Child("Cutscene", root);
+            var canvas = canvasObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 40;
+            AddScaler(canvasObject);
+            canvasObject.AddComponent<GraphicRaycaster>();
+
+            var cutscene = canvasObject.AddComponent<CutsceneView>();
+            Wire(cutscene,
+                ("clip", AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(Root + "/Video/katscena.mp4")),
+                ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+            return cutscene;
         }
 
         private static void CreateBubble(GameObject hud)

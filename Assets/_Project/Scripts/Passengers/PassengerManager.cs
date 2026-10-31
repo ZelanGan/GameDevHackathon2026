@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NightTrolleybus.Core.Events;
 using NightTrolleybus.Route;
 using NightTrolleybus.Vehicle;
@@ -18,6 +19,10 @@ namespace NightTrolleybus.Passengers
         [SerializeField] private float boardingChance = 0.6f;
         [SerializeField] private Sprite sprite;
         [SerializeField] private Material material;
+        [SerializeField] private Material friendlyMaterial;
+        [Tooltip("Шанс, що зайде пасажир із подарунком, а не тіньовий")]
+        [Range(0f, 1f)]
+        [SerializeField] private float friendlyChance = 0.65f;
         [SerializeField] private StringEventChannel noticeRaised;
 
         private PassengerRoster roster;
@@ -55,7 +60,23 @@ namespace NightTrolleybus.Passengers
             boardingFinished = true;
             int freeSeat = FindFreeSeat();
             if (freeSeat >= 0 && Random.value <= boardingChance)
-                Board(pool[Random.Range(0, pool.Length)], freeSeat);
+                Board(PickPassenger(), freeSeat);
+        }
+
+        private PassengerData PickPassenger()
+        {
+            bool wantFriendly = Random.value <= friendlyChance;
+            var candidates = new List<PassengerData>();
+            foreach (PassengerData data in pool)
+            {
+                if ((data.Fear <= 0f) == wantFriendly)
+                    candidates.Add(data);
+            }
+
+            if (candidates.Count == 0)
+                candidates.AddRange(pool);
+
+            return candidates[Random.Range(0, candidates.Count)];
         }
 
         private int FindFreeSeat()
@@ -85,7 +106,8 @@ namespace NightTrolleybus.Passengers
 
             var spriteRenderer = passengerObject.AddComponent<SpriteRenderer>();
             spriteRenderer.sprite = sprite;
-            spriteRenderer.sharedMaterial = material;
+            // Дружні пасажири видні й поза світлом Вогника, а тіньові лишаються темними силуетами.
+            spriteRenderer.sharedMaterial = entry.Data.Fear <= 0f && friendlyMaterial != null ? friendlyMaterial : material;
             spriteRenderer.color = entry.Data.Color;
             spriteRenderer.sortingOrder = 2;
             var trigger = passengerObject.AddComponent<BoxCollider2D>();

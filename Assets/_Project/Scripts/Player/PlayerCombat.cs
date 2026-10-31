@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace NightTrolleybus.Player
 {
-    /// <summary>Ближній бій: удар поточною зброєю в напрямку погляду.</summary>
+    /// <summary>Ближній бій: удар поточною зброєю туди, куди дивиться гравець.</summary>
     [RequireComponent(typeof(PlayerMotor2D))]
     public class PlayerCombat : MonoBehaviour
     {
@@ -36,10 +36,13 @@ namespace NightTrolleybus.Player
         {
             WeaponData weapon = loadout.Weapon;
             cooldownTimer = weapon.Cooldown;
-            StartCoroutine(ShowSwing(weapon.Range));
 
-            Vector2 center = (Vector2)transform.position + new Vector2(motor.Facing * weapon.Range / 2f, 0f);
-            int count = Physics2D.OverlapBox(center, new Vector2(weapon.Range, 1.6f), 0f, ContactFilter2D.noFilter, hits);
+            Vector2 direction = motor.FacingDirection;
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            StartCoroutine(ShowSwing(direction, angle, weapon.Range));
+
+            Vector2 center = (Vector2)transform.position + direction * (weapon.Range / 2f);
+            int count = Physics2D.OverlapBox(center, new Vector2(weapon.Range, 1.6f), angle, ContactFilter2D.noFilter, hits);
             for (int i = 0; i < count; i++)
             {
                 if (hits[i].gameObject != gameObject && hits[i].TryGetComponent(out Health target))
@@ -47,9 +50,11 @@ namespace NightTrolleybus.Player
             }
         }
 
-        private IEnumerator ShowSwing(float range)
+        private IEnumerator ShowSwing(Vector2 direction, float angle, float range)
         {
-            swingVisual.transform.localPosition = new Vector3(motor.Facing * range / 2f, 0f, 0f);
+            Transform swing = swingVisual.transform;
+            swing.localPosition = direction * (range / 2f);
+            swing.rotation = Quaternion.Euler(0f, 0f, angle);
             swingVisual.enabled = true;
             yield return new WaitForSeconds(0.1f);
             swingVisual.enabled = false;

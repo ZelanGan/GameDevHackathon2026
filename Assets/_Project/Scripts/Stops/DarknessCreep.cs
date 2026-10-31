@@ -25,7 +25,8 @@ namespace NightTrolleybus.Stops
 
         [Header("Моби")]
         [SerializeField] private GameObject enemyPrefab;
-        [SerializeField] private float spawnY = -1f;
+        [SerializeField] private float spawnMinY = -10f;
+        [SerializeField] private float spawnMaxY = 10f;
         [SerializeField] private float slowSpawnInterval = 25f;
         [SerializeField] private float fastSpawnInterval = 8f;
         [SerializeField] private int maxSpawned = 6;
@@ -66,7 +67,7 @@ namespace NightTrolleybus.Stops
             spawnTimer = Mathf.Lerp(slowSpawnInterval, fastSpawnInterval, Level);
             spawned.RemoveAll(enemy => enemy == null);
             if (spawned.Count < maxSpawned)
-                spawned.Add(Instantiate(enemyPrefab, new Vector3(EdgeX - 1f, spawnY, 0f), Quaternion.identity));
+                spawned.Add(Instantiate(enemyPrefab, new Vector3(EdgeX - 1f, Random.Range(spawnMinY, spawnMaxY), 0f), Quaternion.identity));
         }
     }
 }

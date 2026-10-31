@@ -241,7 +241,7 @@ namespace NightTrolleybus.EditorTools
             StretchFull((RectTransform)stopPanel.transform);
             Text healthLabel = CreateLabel("HealthLabel", stopPanel.transform, -286f, 40f, "Здоров'я: 100%");
             Text darknessLabel = CreateLabel("DarknessLabel", stopPanel.transform, -324f, 40f, string.Empty);
-            CreateLabel("StopHint", stopPanel.transform, -362f, 40f, "A/D, Пробіл, ЛКМ удар, E дія, F Спалах, R Підсвітити, Tab/Q предмет, P пауза");
+            CreateLabel("StopHint", stopPanel.transform, -362f, 40f, "WASD, миша: погляд, ЛКМ удар, E дія, F Спалах, R Підсвітити, Tab/Q предмет, P пауза");
             Wire(hud.AddComponent<StopHudView>(),
                 ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")), ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")),
                 ("fearChanged", fearChanged), ("healthLabel", healthLabel), ("darknessLabel", darknessLabel));

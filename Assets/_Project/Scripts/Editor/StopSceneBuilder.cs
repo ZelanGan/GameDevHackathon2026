@@ -12,141 +12,195 @@ using static NightTrolleybus.EditorTools.BuilderTools;
 
 namespace NightTrolleybus.EditorTools
 {
-    /// <summary>Збирає сцени зупинок із плейсхолдерів. Вже зібрані сцени не перезаписує.</summary>
+    /// <summary>Збирає сцени зупинок у вигляді зверху. Вже зібрані сцени без явної команди не перезаписує.</summary>
     public static class StopSceneBuilder
     {
         private const string LevelName = "StopLevel";
         private const string EnemyPrefabPath = Root + "/Prefabs/Enemies/Shade.prefab";
+        private const string DepotPath = Root + "/Scenes/Stops/Stop_Depot.unity";
+        private const string MarketPath = Root + "/Scenes/Stops/Stop_Market.unity";
+        private const string GunShopPath = Root + "/Scenes/Stops/Stop_GunShop.unity";
+
+        // Межі локації в юнітах. Вхід ліворуч, темрява наповзає праворуч.
+        private const int MinX = 0;
+        private const int MaxX = 60;
+        private const int MinY = -12;
+        private const int MaxY = 12;
+
+        private static bool overwrite;
+
+        [MenuItem("Night Trolleybus/Scenes/Rebuild All Stops (overwrites scenes)")]
+        public static void RebuildAll()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                return;
+
+            // Префаб теж заново: у нього змінився колайдер і зник вплив гравітації.
+            AssetDatabase.DeleteAsset(EnemyPrefabPath);
+            overwrite = true;
+            try
+            {
+                BuildDepot();
+                BuildMarket();
+                BuildGunShop();
+            }
+            finally
+            {
+                overwrite = false;
+            }
+        }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Depot Scene")]
         public static void BuildDepot()
         {
-            string path = Root + "/Scenes/Stops/Stop_Depot.unity";
-            if (!BeginScene(path, new Color(0.35f, 0.32f, 0.3f), "DepotGround", new[] { 8f, 22f, 40f }, out GameObject player))
+            if (!BeginScene(DepotPath, new Color(0.62f, 0.58f, 0.54f), "TopDepotFloor", out GameObject player, out Transform level))
                 return;
 
-            // Депо: електрика й запчастини, небагато ворогів.
-            GameObject charger = CreateArt("PowerCharger", null, new Vector3(5f, -1.2f, 0f), "Charger", 1);
+            // Депо: електрика й запчастини, кілька кімнат і небагато ворогів.
+            Wall(level, 18, -12, 19, -2);
+            Wall(level, 18, 2, 19, 12);
+            Wall(level, 38, -12, 39, 4);
+            Wall(level, 38, 8, 39, 12);
+            foreach (Vector2 crate in new[] { new Vector2(10f, 5f), new Vector2(12f, -6f), new Vector2(26f, 6f), new Vector2(30f, -5f), new Vector2(46f, -3f) })
+                CreateCrate(level, crate);
+
+            GameObject charger = CreateArt("PowerCharger", null, new Vector3(5f, 6f, 0f), "Top_Charger", 1);
             AddFittedCollider(charger, true);
             Wire(charger.AddComponent<PowerCharger>(), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
 
-            Pickup("Match", Match, 7f);
-            Pickup("Candle", Candle, 12f, 1.4f);
-            Pickup("Battery_A", Battery, 25f);
-            Pickup("Ticket", Ticket, 30f, 1.4f);
+            Pickup("Match", Match, 8f, -3f);
+            Pickup("Candle", Candle, 14f, 8f);
+            Pickup("Battery_A", Battery, 25f, -8f);
+            Pickup("Ticket", Ticket, 33f, 9f);
 
-            // Прихований прохід: платформа, яку видно лише під Підсвічуванням, веде до схованого акумулятора.
-            GameObject hiddenPlatform = CreateArt("HiddenPlatform", null, new Vector3(35.5f, 2.5f, 0f), "HiddenPlank", 1);
-            AddFittedCollider(hiddenPlatform, false);
-            MakeRevealable(hiddenPlatform);
-            MakeRevealable(Pickup("Battery_Hidden", Battery, 36f, 3.5f));
-            MakeRevealable(Pickup("Candle_Hidden", Candle, 44f));
+            // Прихована кімната в кутку: прохід до неї відкривається лише під Підсвічуванням.
+            Wall(level, 52, 6, 60, 7);
+            Wall(level, 52, 7, 53, 8);
+            Wall(level, 52, 10, 53, 12);
+            GameObject hiddenWall = CreateTiled("HiddenWall", null, new Vector3(52.5f, 9f, 0f), "Top_HiddenWall", new Vector2(1f, 2f), Color.white, 1);
+            hiddenWall.AddComponent<BoxCollider2D>().size = new Vector2(1f, 2f);
+            MakeRevealable(hiddenWall, true);
+            Pickup("Battery_Hidden", Battery, 56f, 9.5f);
+            MakeRevealable(Pickup("Candle_Hidden", Candle, 44f, 9f));
 
-            FinishScene(path, player, new[] { 20f, 34f, 50f });
+            FinishScene(DepotPath, player, new[] { new Vector2(24f, 0f), new Vector2(34f, -8f), new Vector2(50f, 0f) });
         }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Market Scene")]
         public static void BuildMarket()
         {
-            string path = Root + "/Scenes/Stops/Stop_Market.unity";
-            if (!BeginScene(path, new Color(0.3f, 0.33f, 0.36f), "MarketGround", new[] { 15f, 27f, 37f, 46f }, out GameObject player))
+            if (!BeginScene(MarketPath, new Color(0.56f, 0.62f, 0.68f), "TopMarketFloor", out GameObject player, out Transform level))
                 return;
 
-            // Супермаркет: багато предметів, але й багато ворогів.
-            Pickup("Candle_A", Candle, 7f);
-            Pickup("Match_A", Match, 11f, 1.3f);
-            Pickup("Candle_B", Candle, 18f, 3.4f);
-            Pickup("Match_B", Match, 24f);
-            Pickup("Ticket_A", Ticket, 30f, 1.4f);
-            Pickup("Candle_C", Candle, 33f);
-            Pickup("Ticket_B", Ticket, 42f);
-            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 50f));
-            MakeRevealable(Pickup("Candle_Hidden", Candle, 55f));
+            // Супермаркет: ряди полиць, багато предметів, але й багато ворогів.
+            for (int x = 12; x < 56; x += 10)
+            {
+                Wall(level, x, -9, x + 1, -2);
+                Wall(level, x, 2, x + 1, 9);
+            }
 
-            FinishScene(path, player, new[] { 14f, 22f, 31f, 39f, 47f, 54f });
+            Pickup("Candle_A", Candle, 7f, 6f);
+            Pickup("Match_A", Match, 16f, -6f);
+            Pickup("Candle_B", Candle, 18f, 6f);
+            Pickup("Match_B", Match, 26f, -5f);
+            Pickup("Ticket_A", Ticket, 28f, 7f);
+            Pickup("Candle_C", Candle, 37f, -7f);
+            Pickup("Ticket_B", Ticket, 46f, 5f);
+            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 48f, -10f));
+            MakeRevealable(Pickup("Candle_Hidden", Candle, 57f, 10f));
+
+            FinishScene(MarketPath, player, new[] { new Vector2(16f, 0f), new Vector2(25f, 6f), new Vector2(31f, -6f), new Vector2(38f, 0f), new Vector2(47f, 7f), new Vector2(54f, -5f) });
         }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Gun Shop Scene")]
         public static void BuildGunShop()
         {
-            string path = Root + "/Scenes/Stops/Stop_GunShop.unity";
-            if (!BeginScene(path, new Color(0.34f, 0.29f, 0.3f), "GunShopGround", new[] { 20f }, out GameObject player))
+            if (!BeginScene(GunShopPath, new Color(0.64f, 0.54f, 0.54f), "TopGunShopFloor", out GameObject player, out Transform level))
                 return;
 
-            // Магазин зброї: обмін предметів на зброю та кілька знахідок на підході.
-            Pickup("Ticket", Ticket, 9f);
-            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 26f));
+            // Магазин зброї: зал із прилавками, а далі склад із небезпечними знахідками.
+            Wall(level, 26, -12, 27, -2);
+            Wall(level, 26, 2, 27, 12);
+            CreateCrate(level, new Vector2(36f, 4f));
+            CreateCrate(level, new Vector2(44f, -6f));
 
-            CreateStand("Stand_Crowbar", 14f, Ticket, 2, Crowbar, null);
-            CreateStand("Stand_FireAxe", 17f, Ticket, 4, FireAxe, null);
-            CreateStand("Stand_Candle", 23f, Ticket, 1, null, Candle);
+            Pickup("Ticket", Ticket, 8f, -6f);
+            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 22f, -9f));
+            Pickup("Ticket_Store", Ticket, 50f, 8f);
 
-            FinishScene(path, player, new[] { 35f, 48f });
+            CreateStand("Stand_Crowbar", new Vector2(13f, 5f), Ticket, 2, Crowbar, null);
+            CreateStand("Stand_FireAxe", new Vector2(18f, 5f), Ticket, 4, FireAxe, null);
+            CreateStand("Stand_Candle", new Vector2(23f, 5f), Ticket, 1, null, Candle);
+
+            FinishScene(GunShopPath, player, new[] { new Vector2(38f, -2f), new Vector2(50f, 3f) });
         }
 
-        private static bool BeginScene(string path, Color groundColor, string tileName, float[] crates, out GameObject player)
+        private static bool BeginScene(string path, Color floorColor, string tileName, out GameObject player, out Transform level)
         {
             player = null;
-            if (IsAlreadyBuilt(path, LevelName))
+            level = null;
+            if (!overwrite && IsAlreadyBuilt(path, LevelName))
                 return false;
 
             // Нова сцена вивантажує незбережені асети, тому створюємо її до них.
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             CreateGlobalLight();
 
-            var level = new GameObject(LevelName).transform;
-            CreateTerrain(level, groundColor, tileName);
-            CreateTiled("Background", level, new Vector3(30f, 3f, 0f), "BrickWall", new Vector2(70f, 12f), groundColor, -10);
-            foreach (float x in crates)
-                CreateCrate(level, x);
+            level = new GameObject(LevelName).transform;
+            CreateFloor(level, floorColor, tileName);
+            Wall(level, MinX - 1, MinY - 1, MaxX + 1, MinY);
+            Wall(level, MinX - 1, MaxY, MaxX + 1, MaxY + 1);
+            Wall(level, MinX - 1, MinY, MinX, MaxY);
+            Wall(level, MaxX, MinY, MaxX + 1, MaxY);
 
             var respawn = new GameObject("RespawnPoint").transform;
             respawn.SetParent(level, false);
-            respawn.position = new Vector3(3f, -1.2f, 0f);
+            respawn.position = new Vector3(3f, 0f, 0f);
 
             player = CreatePlayer(respawn);
             CreateFlame(player.transform);
+            player.transform.Find("Flame").localPosition = new Vector3(0.45f, 0.55f, 0f);
             var flameLight = player.GetComponentInChildren<Light2D>();
             flameLight.shadowsEnabled = true;
             flameLight.shadowIntensity = 0.85f;
             CreateAbilities(player, player.transform, false);
 
-            GameObject door = CreateArt("BusDoor", level, new Vector3(1f, -1f, 0f), "StopDoor", -1);
+            GameObject door = CreateArt("BusDoor", level, new Vector3(0.5f, 0f, 0f), "Top_Door", 1);
             AddFittedCollider(door, true);
             Wire(door.AddComponent<StopExit>(), ("stopCompleted", Channel<VoidEventChannel>("StopCompleted")));
             return true;
         }
 
-        private static void FinishScene(string path, GameObject player, float[] enemies)
+        private static void FinishScene(string path, GameObject player, Vector2[] enemies)
         {
             GameObject enemyPrefab = GetOrCreateEnemyPrefab();
-            foreach (float x in enemies)
+            foreach (Vector2 position in enemies)
             {
                 var enemy = (GameObject)PrefabUtility.InstantiatePrefab(enemyPrefab);
-                enemy.transform.position = new Vector3(x, -1.2f, 0f);
+                enemy.transform.position = position;
             }
 
             CreateDarkness(player.transform, enemyPrefab);
-            BusSceneBuilder.CreateFollowCameras(player.transform);
+            BusSceneBuilder.CreateFollowCameras(player.transform, 6f, 0f);
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
             AssetDatabase.SaveAssets();
             Debug.Log($"Сцену зібрано: {path}");
         }
 
-        private static GameObject Pickup(string objectName, ItemData item, float x, float y = -1.7f) =>
+        private static GameObject Pickup(string objectName, ItemData item, float x, float y) =>
             CreatePickup(objectName, item, new Vector3(x, y, 0f));
 
-        private static void CreateStand(string objectName, float x, ItemData cost, int count, WeaponData weapon, ItemData item)
+        private static void CreateStand(string objectName, Vector2 position, ItemData cost, int count, WeaponData weapon, ItemData item)
         {
-            GameObject stand = CreateArt(objectName, null, new Vector3(x, -1.4f, 0f), "Counter", 1);
+            GameObject stand = CreateArt(objectName, null, position, "Top_Counter", 1);
             AddFittedCollider(stand, true);
             var trade = stand.AddComponent<TradeStand>();
             Wire(trade, ("costItem", cost), ("rewardWeapon", weapon), ("rewardItem", item), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
             SetInt(trade, "costCount", count);
         }
 
-        private static void CreateTerrain(Transform level, Color color, string tileName)
+        private static void CreateFloor(Transform level, Color color, string tileName)
         {
             string tilePath = $"{Root}/Art/Tilesets/{tileName}.asset";
             var tile = AssetDatabase.LoadAssetAtPath<Tile>(tilePath);
@@ -154,50 +208,50 @@ namespace NightTrolleybus.EditorTools
             {
                 tile = ScriptableObject.CreateInstance<Tile>();
                 tile.color = color;
-                tile.colliderType = Tile.ColliderType.Grid;
+                tile.colliderType = Tile.ColliderType.None;
                 AssetDatabase.CreateAsset(tile, tilePath);
             }
 
-            tile.sprite = PixelArt.Get("GroundTile");
+            tile.sprite = PixelArt.Get("Top_Floor");
             EditorUtility.SetDirty(tile);
 
             var gridObject = new GameObject("Grid");
             gridObject.transform.SetParent(level, false);
             gridObject.AddComponent<Grid>();
 
-            var mapObject = new GameObject("Ground");
+            var mapObject = new GameObject("Floor");
             mapObject.transform.SetParent(gridObject.transform, false);
             var tilemap = mapObject.AddComponent<Tilemap>();
-            mapObject.AddComponent<TilemapRenderer>().sharedMaterial = LitMaterial;
-            mapObject.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
-            var tilemapCollider = mapObject.AddComponent<TilemapCollider2D>();
-            tilemapCollider.compositeOperation = Collider2D.CompositeOperation.Merge;
-            var compositeCollider = mapObject.AddComponent<CompositeCollider2D>();
+            var tilemapRenderer = mapObject.AddComponent<TilemapRenderer>();
+            tilemapRenderer.sharedMaterial = LitMaterial;
+            tilemapRenderer.sortingOrder = -10;
 
-            FillTiles(tilemap, tile, -4, 66, -6, -3);   // Земля, верхній край на y = -2.
-            FillTiles(tilemap, tile, -4, -3, -2, 8);    // Ліва межа.
-            FillTiles(tilemap, tile, 65, 66, -2, 8);    // Права межа.
-            FillTiles(tilemap, tile, 10, 13, 0, 0);     // Платформи.
-            FillTiles(tilemap, tile, 16, 19, 2, 2);
-            FillTiles(tilemap, tile, 28, 31, 0, 0);
-
-            // Без явної генерації зведений колайдер лишається порожнім, і гравець провалюється.
-            tilemapCollider.ProcessTilemapChanges();
-            compositeCollider.GenerateGeometry();
-        }
-
-        private static void FillTiles(Tilemap tilemap, TileBase tile, int minX, int maxX, int minY, int maxY)
-        {
-            for (int x = minX; x <= maxX; x++)
+            for (int x = MinX; x < MaxX; x++)
             {
-                for (int y = minY; y <= maxY; y++)
+                for (int y = MinY; y < MaxY; y++)
                     tilemap.SetTile(new Vector3Int(x, y, 0), tile);
             }
         }
 
-        private static void CreateCrate(Transform level, float x)
+        /// <summary>Стіна-прямокутник: спрайт плиткою, колайдер і тінь, щоб світло не проходило крізь неї.</summary>
+        private static void Wall(Transform level, int xMin, int yMin, int xMax, int yMax)
         {
-            GameObject crate = CreateArt($"Crate_{x}", level, new Vector3(x, -1.25f, 0f), "Crate", 2);
+            var size = new Vector2(xMax - xMin, yMax - yMin);
+            var center = new Vector3(xMin + size.x / 2f, yMin + size.y / 2f, 0f);
+
+            GameObject wall = CreateTiled("Wall", level, center, "Top_Wall", size, Color.white, 0);
+            wall.AddComponent<BoxCollider2D>().size = size;
+
+            // Тінь будується за формою спрайта, а плитка її не дає, тому тінь кидає окремий прозорий квадрат.
+            GameObject shadow = CreateSprite("Shadow", wall.transform, Vector3.zero, new Vector3(size.x, size.y, 1f), Color.clear, 0);
+            var caster = shadow.AddComponent<ShadowCaster2D>();
+            caster.useRendererSilhouette = true;
+            caster.castsShadows = true;
+        }
+
+        private static void CreateCrate(Transform level, Vector2 position)
+        {
+            GameObject crate = CreateArt($"Crate_{position.x}_{position.y}", level, position, "Top_Crate", 2);
             AddFittedCollider(crate, false);
             var caster = crate.AddComponent<ShadowCaster2D>();
             caster.useRendererSilhouette = true;
@@ -211,29 +265,32 @@ namespace NightTrolleybus.EditorTools
             player.transform.position = respawn.position;
 
             var body = player.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
             body.freezeRotation = true;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            player.AddComponent<BoxCollider2D>().size = new Vector2(0.8f, 1.6f);
-            player.AddComponent<PlayerMotor2D>();
+            player.AddComponent<CircleCollider2D>().radius = 0.38f;
+            SetBool(player.AddComponent<PlayerMotor2D>(), "topDown", true);
             Wire(player.AddComponent<PlayerInteractor>(), ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")));
             Wire(player.AddComponent<Health>(), ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")));
             Wire(player.AddComponent<PlayerDeathHandler>(), ("respawnPoint", respawn), ("noticeRaised", noticeRaised));
 
-            CreatePlayerBody(player);
+            CreatePlayerBody(player, "Top_");
             GameObject swing = CreateArt("Swing", player.transform, Vector3.zero, "Swing", 6, Color.white, UnlitMaterial);
             Wire(player.AddComponent<PlayerCombat>(), ("swingVisual", swing.GetComponent<SpriteRenderer>()));
             return player;
         }
 
-        private static void MakeRevealable(GameObject target)
+        private static void MakeRevealable(GameObject target, bool hiddenPassage = false)
         {
-            Wire(target.AddComponent<RevealableObject>(), ("config", FlameSettings), ("revealChanged", Channel<BoolEventChannel>("RevealChanged")));
+            var revealable = target.AddComponent<RevealableObject>();
+            Wire(revealable, ("config", FlameSettings), ("revealChanged", Channel<BoolEventChannel>("RevealChanged")));
+            SetBool(revealable, "hiddenPassage", hiddenPassage);
         }
 
         private static void CreateDarkness(Transform player, GameObject enemyPrefab)
         {
-            GameObject wall = CreateSprite("DarknessWall", null, new Vector3(92f, 2f, 0f), new Vector3(60f, 24f, 1f), Color.black, 50, UnlitMaterial);
+            GameObject wall = CreateSprite("DarknessWall", null, new Vector3(92f, 0f, 0f), new Vector3(60f, 60f, 1f), Color.black, 50, UnlitMaterial);
             var darkness = new GameObject("Darkness").AddComponent<DarknessCreep>();
             Wire(darkness, ("wall", wall.transform), ("player", player), ("enemyPrefab", enemyPrefab),
                 ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")));
@@ -245,11 +302,12 @@ namespace NightTrolleybus.EditorTools
             if (existing != null)
                 return existing;
 
-            GameObject enemy = CreateArt("Shade", null, Vector3.zero, "Shade_A", 4);
-            AddFrameLoop(enemy, 5f, "Shade_A", "Shade_B");
+            GameObject enemy = CreateArt("Shade", null, Vector3.zero, "Top_Shade_A", 4);
+            AddFrameLoop(enemy, 5f, "Top_Shade_A", "Top_Shade_B");
             var body = enemy.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
             body.freezeRotation = true;
-            AddFittedCollider(enemy, false);
+            enemy.AddComponent<CircleCollider2D>().radius = 0.42f;
             enemy.AddComponent<Health>();
             Wire(enemy.AddComponent<EnemyBrain>(), ("data", GetOrCreate<EnemyData>(Root + "/Data/Enemies/Shade.asset")));
 

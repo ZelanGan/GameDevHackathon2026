@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace NightTrolleybus.Stops.Enemies
 {
-    /// <summary>Моб темряви: іде до гравця, б'є поруч, лякає Вогника, після Спалаху стоїть оглушений.</summary>
+    /// <summary>Моб темряви: іде прямо до гравця, б'є поруч, лякає Вогника, після Спалаху стоїть оглушений.</summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(Health))]
     public class EnemyBrain : MonoBehaviour, IStunnable
     {
@@ -17,7 +17,7 @@ namespace NightTrolleybus.Stops.Enemies
         private Health playerHealth;
         private float stunTimer;
         private float attackTimer;
-        private float moveDirection;
+        private Vector2 moveDirection;
 
         public bool IsStunned => stunTimer > 0f;
 
@@ -50,9 +50,10 @@ namespace NightTrolleybus.Stops.Enemies
         private void Update()
         {
             attackTimer -= Time.deltaTime;
-            moveDirection = 0f;
+            moveDirection = Vector2.zero;
 
-            float distance = Vector2.Distance(transform.position, player.position);
+            Vector2 toPlayer = player.position - transform.position;
+            float distance = toPlayer.magnitude;
             UpdateFear(distance);
 
             if (IsStunned)
@@ -71,11 +72,11 @@ namespace NightTrolleybus.Stops.Enemies
             }
             else if (distance <= data.DetectionRange)
             {
-                moveDirection = Mathf.Sign(player.position.x - transform.position.x);
+                moveDirection = toPlayer / distance;
             }
         }
 
-        private void FixedUpdate() => body.linearVelocity = new Vector2(moveDirection * data.Speed, body.linearVelocity.y);
+        private void FixedUpdate() => body.linearVelocity = moveDirection * data.Speed;
 
         private void UpdateFear(float distance)
         {

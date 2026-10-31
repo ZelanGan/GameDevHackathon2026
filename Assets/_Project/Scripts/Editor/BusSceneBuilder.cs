@@ -61,6 +61,13 @@ namespace NightTrolleybus.EditorTools
             var flameSeat = new GameObject("FlameSeat");
             flameSeat.transform.position = new Vector3(1.8f, -1.6f, 0f);
             CreateFlame(flameSeat.transform);
+            // Чаша зі свічкою стоїть посеред подушки сидіння.
+            Transform flameOnSeat = flameSeat.transform.Find("Flame");
+            flameOnSeat.localPosition = new Vector3(-0.1f, 0.41f, 0f);
+            // Як і сидіння, чаша лишається за водієм, коли він проходить проходом.
+            flameOnSeat.Find("Candle").GetComponent<SpriteRenderer>().sortingOrder = 2;
+            flameOnSeat.Find("Sprite").GetComponent<SpriteRenderer>().sortingOrder = 3;
+            flameOnSeat.Find("Bowl").GetComponent<SpriteRenderer>().sortingOrder = 3;
             CreateAbilities(logic, flameSeat.transform, true);
 
             CreateFollowCameras(player.transform, 3.3333333f, 1.2f);
@@ -205,7 +212,7 @@ namespace NightTrolleybus.EditorTools
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
             player.AddComponent<BoxCollider2D>().size = new Vector2(0.8f, 1.6f);
             player.AddComponent<PlayerMotor2D>();
-            Wire(player.AddComponent<PlayerInteractor>(), ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")));
+            AddInteractor(player);
 
             CreatePlayerBody(player);
             return player;
@@ -215,8 +222,10 @@ namespace NightTrolleybus.EditorTools
         {
             var devices = new GameObject("Devices").transform;
 
-            GameObject heaterObject = CreateDevice("HeaterSwitch", devices, new Vector3(-3.2f, -1.5f, 0f), "Heater");
+            GameObject heaterObject = CreateDevice("HeaterSwitch", devices, new Vector3(-3.2f, -1.5f, 0f), "Heater_Off");
             AddDeviceSwitch(heaterObject, DeviceKind.Heater, "обігрівач");
+            AddStateView(heaterObject, ViewedDevice.Heater, Channel<BoolEventChannel>("HeaterRunningChanged"), "Heater_Off",
+                new[] { "Heater_On_A", "Heater_On_B" }, new Color(1f, 0.55f, 0.2f));
 
             var cabinLightObject = new GameObject("CabinLightFixture");
             cabinLightObject.transform.SetParent(devices, false);
@@ -233,6 +242,12 @@ namespace NightTrolleybus.EditorTools
 
             GameObject doorsObject = CreateDevice("DoorsSwitch", devices, new Vector3(0f, -1f, 0f), "DoorLever");
             doorsObject.AddComponent<DoorsSwitch>();
+            var doorsChannel = Channel<BoolEventChannel>("DoorsOpenChanged");
+            AddStateView(doorsObject, ViewedDevice.Doors, doorsChannel, "DoorLever", new[] { "DoorLever_Open" }, null);
+
+            // Самі двері на стіні за сидіннями, поруч із важелем. Холодне світло знадвору видно здалеку.
+            GameObject cabinDoor = CreateArt("CabinDoor", devices, new Vector3(0.8f, -1.125f, 0f), "CabinDoor_Closed", -3);
+            AddStateView(cabinDoor, ViewedDevice.Doors, doorsChannel, "CabinDoor_Closed", new[] { "CabinDoor_Open" }, new Color(0.45f, 0.65f, 1f));
 
             GameObject exitObject = CreateDevice("BusExit", devices, new Vector3(-0.9f, -1.2f, 0f), "ExitDoor");
             // Двері мають світитися навіть у темному салоні, бо це головний орієнтир на зупинці.
@@ -248,6 +263,29 @@ namespace NightTrolleybus.EditorTools
             GameObject device = CreateArt(objectName, parent, position, spriteName, 1);
             AddFittedCollider(device, true);
             return device;
+        }
+
+        private static void AddStateView(GameObject target, ViewedDevice device, BoolEventChannel channel, string offSprite, string[] onSprites, Color? lightColor)
+        {
+            var view = target.AddComponent<DeviceStateView>();
+            Wire(view, ("stateChanged", channel), ("offSprite", PixelArt.Get(offSprite)));
+            SetEnum(view, "device", (int)device);
+            var frames = new Object[onSprites.Length];
+            for (int i = 0; i < onSprites.Length; i++)
+                frames[i] = PixelArt.Get(onSprites[i]);
+            WireArray(view, "onFrames", frames);
+
+            if (lightColor == null)
+                return;
+
+            var stateLight = new GameObject("StateLight").AddComponent<Light2D>();
+            stateLight.transform.SetParent(target.transform, false);
+            stateLight.lightType = Light2D.LightType.Point;
+            stateLight.pointLightOuterRadius = 3f;
+            stateLight.intensity = 0.8f;
+            stateLight.color = lightColor.Value;
+            stateLight.enabled = false;
+            Wire(view, ("stateLight", stateLight));
         }
 
         private static void AddDeviceSwitch(GameObject target, DeviceKind kind, string deviceName)

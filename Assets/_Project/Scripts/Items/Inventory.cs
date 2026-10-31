@@ -30,12 +30,12 @@ namespace NightTrolleybus.Items
         {
             if (items.Count >= capacity)
             {
-                noticeRaised.Raise("Інвентар заповнений");
+                noticeRaised.Raise(Loc.T("Інвентар заповнений"));
                 return false;
             }
 
             items.Add(item);
-            noticeRaised.Raise($"Отримано: {item.DisplayName}");
+            noticeRaised.Raise(Loc.F("Отримано: {0}", item.DisplayName));
             inventoryChanged.Raise();
             return true;
         }
@@ -133,14 +133,14 @@ namespace NightTrolleybus.Items
             ItemData item = items[SelectedIndex];
             if (!item.IsUsable)
             {
-                noticeRaised.Raise($"{item.DisplayName}: це для обміну");
+                noticeRaised.Raise(Loc.F("{0}: це для обміну", item.DisplayName));
                 return;
             }
 
             items.RemoveAt(SelectedIndex);
             SelectedIndex = items.Count == 0 ? 0 : Mathf.Min(SelectedIndex, items.Count - 1);
             item.Use();
-            noticeRaised.Raise($"Використано: {item.DisplayName} ({item.Description})");
+            noticeRaised.Raise(Loc.F("Використано: {0} ({1})", item.DisplayName, item.Description));
             inventoryChanged.Raise();
         }
     }

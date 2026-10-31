@@ -15,7 +15,7 @@ namespace NightTrolleybus.Items
 
         public bool IsUsable => effects != null && effects.Length > 0;
         public string Id => id;
-        public string DisplayName => displayName;
+        public string DisplayName => Loc.T(displayName);
         public Sprite Icon => icon;
 
         public string Description
@@ -23,7 +23,7 @@ namespace NightTrolleybus.Items
             get
             {
                 if (!IsUsable)
-                    return "Не використовується: це плата в магазині зброї";
+                    return Loc.T("Не використовується: це плата в магазині зброї");
 
                 var parts = new string[effects.Length];
                 for (int i = 0; i < effects.Length; i++)

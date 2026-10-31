@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NightTrolleybus.Core.Events;
+using NightTrolleybus.Core;
 using NightTrolleybus.Route;
 using NightTrolleybus.Vehicle;
 using UnityEngine;
@@ -95,7 +96,7 @@ namespace NightTrolleybus.Passengers
             var entry = new PassengerRoster.Entry { Data = data, Seat = seat };
             roster.Entries.Add(entry);
             Spawn(entry);
-            noticeRaised.Raise($"Зайшов пасажир: {data.DisplayName}");
+            noticeRaised.Raise(Loc.F("Зайшов пасажир: {0}", data.DisplayName));
         }
 
         private void Spawn(PassengerRoster.Entry entry)

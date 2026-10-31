@@ -22,7 +22,6 @@ namespace NightTrolleybus.Core
         private const string MenuStateName = "Menu";
         private const string CutsceneStateName = "Cutscene";
         private const string EndStateName = "End";
-        private const float StrongEndingFlame = 45f;
         private const float LowPower = 0.5f;
 
         [SerializeField] private SceneLoader sceneLoader;
@@ -42,6 +41,7 @@ namespace NightTrolleybus.Core
         [Header("Інтерфейс")]
         [SerializeField] private GameMenuView menu;
         [SerializeField] private CutsceneView cutscene;
+        [SerializeField] private CutsceneView endingCutscene;
         [SerializeField] private GameObject endPanel;
         [SerializeField] private Text endLabel;
         [SerializeField] private Button restartButton;
@@ -177,6 +177,7 @@ namespace NightTrolleybus.Core
             gameStateChanged.Raise(EndStateName);
             objectiveChanged.Raise(string.Empty);
             endLabel.text = message;
+            restartButton.GetComponentInChildren<Text>().text = Loc.T("У головне меню");
             endPanel.SetActive(true);
             saveSystem.Delete();
         }
@@ -191,16 +192,17 @@ namespace NightTrolleybus.Core
 
         private string BuildMapObjective()
         {
+            // Підказка на мапі лишається лише для нестачі енергії: шкал тут не видно.
             if (GameContext.Power.Normalized >= LowPower)
-                return "Оберіть наступний пункт маршруту: натисніть помаранчевий прямокутник";
+                return string.Empty;
 
             foreach (RouteNode node in route.Nodes)
             {
                 if (node.Type == NodeType.Depot && route.IsAvailable(node))
-                    return "Мало енергії! Їдьте в депо (зелений прямокутник): там зарядна станція";
+                    return Loc.T("Мало енергії! Їдьте в депо (зелений прямокутник): там зарядна станція");
             }
 
-            return "Мало енергії, а депо зараз недоступне. Вимкніть обігрівач і оберіть шлях до депо";
+            return Loc.T("Мало енергії, а депо зараз недоступне. Вимкніть обігрівач і оберіть шлях до депо");
         }
 
         private void OnNodeSelected(RouteNode node) =>
@@ -212,16 +214,13 @@ namespace NightTrolleybus.Core
             string stopScene = node.Type.StopScene();
 
             if (node.Type == NodeType.Final)
-            {
-                GameContext.Audio?.Play(SoundId.Victory);
-                stateMachine.Change(new EndState(this, BuildEnding()));
-            }
+                PlayEnding();
             else if (stopScene != null)
             {
                 stateMachine.Change(new SceneState(this, StopState, stopScene, 1f, false));
                 objectiveChanged.Raise(node.Type == NodeType.Depot
-                    ? "Спершу заряд: шафа із синім світлом поруч із входом (E). Потім предмети й назад до дверей ліворуч"
-                    : "Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!");
+                    ? Loc.T("Спершу заряд: шафа із синім світлом поруч із входом (E). Потім предмети й назад до дверей ліворуч")
+                    : Loc.T("Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!"));
             }
             else if (node.Type == NodeType.Event)
                 stateMachine.Change(new EventState(this, (runner, finished) => runner.RunRandom(finished)));
@@ -229,17 +228,18 @@ namespace NightTrolleybus.Core
                 ShowMap();
         }
 
-        private static string BuildEnding()
+        private void PlayEnding()
         {
-            // Кінцівка залежить від того, скільки сили лишилося у Вогника наприкінці дороги.
-            if (GameContext.Flame.Current >= StrongEndingFlame)
+            // Час стоїть, щоб Вогник не згас під час відео, а пауза не відкрилася поверх нього.
+            Time.timeScale = 0f;
+            inMenu = true;
+            gameStateChanged.Raise(CutsceneStateName);
+            endingCutscene.Play(() =>
             {
-                return "Кінцева зупинка.\nВогник сходить із сидіння й торкається дроту. Світло біжить лініями, " +
-                       "спалахують ліхтарі, вікна, а тоді й зорі.\nНіч скінчилася.";
-            }
-
-            return "Кінцева зупинка.\nВогника ледве видно. Він віддає останню іскру дротам, і вздовж вулиці " +
-                   "повільно займається один-єдиний ліхтар.\nАле це вже не темрява. Хтось піде на це світло.";
+                // Партію пройдено: у меню вже нема чого продовжувати.
+                saveSystem.Delete();
+                ReturnToMenu();
+            });
         }
 
         private void OnFlameExtinguished()
@@ -248,7 +248,7 @@ namespace NightTrolleybus.Core
                 return;
 
             GameContext.Audio?.Play(SoundId.Lose);
-            stateMachine.Change(new EndState(this, "Вогник згас. Ніч лишилася назавжди."));
+            stateMachine.Change(new EndState(this, Loc.T("Вогник згас. Ніч лишилася назавжди.")));
         }
 
         private void ReturnToMenu()

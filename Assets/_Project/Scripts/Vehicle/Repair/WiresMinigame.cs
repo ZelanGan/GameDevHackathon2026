@@ -1,4 +1,5 @@
 using System.Linq;
+using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -20,7 +21,7 @@ namespace NightTrolleybus.Vehicle.Repair
         }
 
         public override string Text =>
-            $"Проводи: з'єднайте по черзі\n{string.Join(" -> ", order.Select(wire => wire.ToString()))}\nЗ'єднано: {connected}/{order.Length}";
+            Loc.F("Проводи: з'єднайте по черзі\n{0}\nЗ'єднано: {1}/{2}", string.Join(" -> ", order.Select(wire => wire.ToString())), connected, order.Length);
 
         public override bool Tick(Keyboard keyboard, float deltaTime)
         {

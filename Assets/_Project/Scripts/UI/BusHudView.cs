@@ -6,56 +6,25 @@ using UnityEngine.UI;
 
 namespace NightTrolleybus.UI
 {
-    /// <summary>Частина інтерфейсу для салону: швидкість, шлях, страх, несправності й ремонт.</summary>
+    /// <summary>Частина інтерфейсу для салону: несправності й ремонт.</summary>
     public class BusHudView : MonoBehaviour
     {
-        [SerializeField] private FloatEventChannel speedChanged;
-        [SerializeField] private FloatEventChannel tripChanged;
-        [SerializeField] private FloatEventChannel fearChanged;
         [SerializeField] private VoidEventChannel faultsChanged;
         [SerializeField] private StringEventChannel repairTextChanged;
-        [SerializeField] private Text speedLabel;
-        [SerializeField] private Text fearLabel;
         [SerializeField] private Text faultsLabel;
         [SerializeField] private Text repairLabel;
 
-        private float speed;
-        private float trip;
-
         private void OnEnable()
         {
-            speedChanged.Raised += OnSpeedChanged;
-            tripChanged.Raised += OnTripChanged;
-            fearChanged.Raised += OnFearChanged;
             faultsChanged.Raised += OnFaultsChanged;
             repairTextChanged.Raised += OnRepairTextChanged;
         }
 
         private void OnDisable()
         {
-            speedChanged.Raised -= OnSpeedChanged;
-            tripChanged.Raised -= OnTripChanged;
-            fearChanged.Raised -= OnFearChanged;
             faultsChanged.Raised -= OnFaultsChanged;
             repairTextChanged.Raised -= OnRepairTextChanged;
         }
-
-        private void OnSpeedChanged(float normalized)
-        {
-            speed = normalized;
-            RefreshMotion();
-        }
-
-        private void OnTripChanged(float normalized)
-        {
-            trip = normalized;
-            RefreshMotion();
-        }
-
-        private void RefreshMotion() =>
-            speedLabel.text = $"Швидкість: {Mathf.RoundToInt(speed * 100f)}%   Шлях: {Mathf.RoundToInt(trip * 100f)}%";
-
-        private void OnFearChanged(float normalized) => fearLabel.text = $"Страх: {Mathf.RoundToInt(normalized * 100f)}%";
 
         private void OnRepairTextChanged(string text) => repairLabel.text = text;
 
@@ -64,11 +33,11 @@ namespace NightTrolleybus.UI
             IVehicleFaults faults = GameContext.Faults;
             string text = string.Empty;
             if (faults.IsActive(FaultType.PolesOff))
-                text += "Штанги злетіли. ";
+                text += Loc.T("Штанги злетіли. ");
             if (faults.IsActive(FaultType.FuseBlown))
-                text += "Запобіжник згорів. ";
+                text += Loc.T("Запобіжник згорів. ");
             if (faults.IsActive(FaultType.WiresLoose))
-                text += "Витік енергії. ";
+                text += Loc.T("Витік енергії. ");
             faultsLabel.text = text;
         }
     }

@@ -25,7 +25,7 @@ namespace NightTrolleybus.Player
             GameContext.Flame?.Drain(flameLoss);
             transform.position = respawnPoint.position;
             health.RestoreFull();
-            noticeRaised.Raise("Ви впали. Вогник витратив силу, щоб повернути вас.");
+            noticeRaised.Raise(Loc.T("Ви впали. Вогник витратив силу, щоб повернути вас."));
         }
     }
 }

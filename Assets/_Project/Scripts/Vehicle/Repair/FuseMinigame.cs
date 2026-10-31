@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -14,8 +15,8 @@ namespace NightTrolleybus.Vehicle.Repair
         public FuseMinigame() => required = Amps[Random.Range(0, Amps.Length)];
 
         public override string Text =>
-            $"Запобіжник: потрібен на {required} А\n1) {Amps[0]} А   2) {Amps[1]} А   3) {Amps[2]} А" +
-            (sparked ? "\nІскра! Не той запобіжник." : string.Empty);
+            Loc.F("Запобіжник: потрібен на {0} А\n1) {1} А   2) {2} А   3) {3} А", required, Amps[0], Amps[1], Amps[2]) +
+            (sparked ? Loc.T("\nІскра! Не той запобіжник.") : string.Empty);
 
         public override bool Tick(Keyboard keyboard, float deltaTime)
         {

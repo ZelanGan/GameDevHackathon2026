@@ -150,7 +150,7 @@ namespace NightTrolleybus.Narrative
             lastLine = line;
             spoken.Add(line);
             nextAllowedTime = Time.unscaledTime + minInterval;
-            bubbleRaised.Raise(line.Text);
+            bubbleRaised.Raise(Loc.T(line.Text));
         }
 
         private DialogueLine PickLine(DialogueTrigger trigger)

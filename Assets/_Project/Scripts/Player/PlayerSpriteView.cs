@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace NightTrolleybus.Player
 {
-    /// <summary>Малює гравця: стоїть або йде за швидкістю. Збоку розвертається дзеркально, зверху обертається за поглядом.</summary>
+    /// <summary>Малює гравця: стоїть або йде за швидкістю. Розвертається дзеркально за поглядом: цілий стоячий водій не має крутитися навколо себе.</summary>
     public class PlayerSpriteView : MonoBehaviour
     {
         [SerializeField] private PlayerMotor2D motor;
@@ -11,6 +11,11 @@ namespace NightTrolleybus.Player
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private Sprite idleFrame;
         [SerializeField] private Sprite[] walkFrames;
+        [Tooltip("Кадри спиною: коли водій дивиться вгору екрана. Лише для виду зверху")]
+        [SerializeField] private Sprite backIdleFrame;
+        [SerializeField] private Sprite[] backWalkFrames;
+        [Range(0f, 1f)]
+        [SerializeField] private float backFacingThreshold = 0.5f;
         [SerializeField] private float framesPerSecond = 8f;
         [SerializeField] private float stepInterval = 0.34f;
 
@@ -30,14 +35,15 @@ namespace NightTrolleybus.Player
         {
             bool isWalking = body.linearVelocity.sqrMagnitude > 0.01f;
             UpdateSteps(isWalking);
-            spriteRenderer.sprite = isWalking
-                ? walkFrames[(int)(Time.time * framesPerSecond) % walkFrames.Length]
-                : idleFrame;
 
             Vector2 facing = motor.FacingDirection;
-            if (motor.IsTopDown)
-                spriteRenderer.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(facing.y, facing.x) * Mathf.Rad2Deg);
-            else if (facing.x != 0f)
+            bool showsBack = motor.IsTopDown && backIdleFrame != null && facing.y > backFacingThreshold;
+            Sprite[] frames = showsBack ? backWalkFrames : walkFrames;
+            spriteRenderer.sprite = isWalking
+                ? frames[(int)(Time.time * framesPerSecond) % frames.Length]
+                : showsBack ? backIdleFrame : idleFrame;
+
+            if (facing.x != 0f)
                 spriteRenderer.flipX = facing.x < 0f;
         }
     }

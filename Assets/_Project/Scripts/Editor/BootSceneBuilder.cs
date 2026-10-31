@@ -132,7 +132,8 @@ namespace NightTrolleybus.EditorTools
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")));
 
             GameMenuView menu = CreateMenu(root);
-            CutsceneView cutscene = CreateCutscene(root);
+            CutsceneView cutscene = CreateCutscene(root, "Cutscene", "katscena");
+            CutsceneView endingCutscene = CreateCutscene(root, "EndingCutscene", "final_cutscene");
             GameObject endPanel = CreatePanel("EndPanel", hud.transform, string.Empty);
             Text endLabel = endPanel.GetComponentInChildren<Text>();
             endLabel.alignment = TextAnchor.LowerCenter;
@@ -145,7 +146,7 @@ namespace NightTrolleybus.EditorTools
                 ("stopCompleted", Channel<VoidEventChannel>("StopCompleted")), ("inBusChanged", inBusChanged),
                 ("gameStateChanged", gameStateChanged), ("noticeRaised", noticeRaised),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")),
-                ("menu", menu), ("cutscene", cutscene), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
+                ("menu", menu), ("cutscene", cutscene), ("endingCutscene", endingCutscene), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), BootPath);
             AssetDatabase.SaveAssets();
@@ -168,7 +169,7 @@ namespace NightTrolleybus.EditorTools
 
             var mapRoot = new GameObject("Map").AddComponent<RectTransform>();
             mapRoot.SetParent(canvasObject.transform, false);
-            mapRoot.anchoredPosition = new Vector2(0f, -120f);
+            mapRoot.anchoredPosition = Vector2.zero;
 
             var view = canvasObject.AddComponent<RouteMapView>();
             Wire(view, ("root", mapRoot), ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
@@ -204,57 +205,74 @@ namespace NightTrolleybus.EditorTools
             AddScaler(hud);
             hud.AddComponent<GraphicRaycaster>();
 
-            Image flameFill = CreateBar("FlameBar", hud.transform, -32f, Color.white);
-            Image temperatureFill = CreateBar("TemperatureBar", hud.transform, -66f, new Color(0.4f, 0.7f, 1f));
-            Image powerFill = CreateBar("PowerBar", hud.transform, -100f, new Color(1f, 0.9f, 0.3f));
-            Text stateLabel = CreateLabel("StateLabel", hud.transform, -134f, 40f, string.Empty);
+            var gaugesRoot = new GameObject("Gauges", typeof(RectTransform)).GetComponent<RectTransform>();
+            gaugesRoot.SetParent(hud.transform, false);
+            StretchFull(gaugesRoot);
             var inventoryPanel = new GameObject("InventoryPanel", typeof(RectTransform)).GetComponent<RectTransform>();
             inventoryPanel.SetParent(hud.transform, false);
-            Text noticeLabel = CreateLabel("NoticeLabel", hud.transform, -172f, 40f, string.Empty);
-            Text promptLabel = CreateLabel("PromptLabel", hud.transform, -210f, 40f, string.Empty);
+            Text noticeLabel = CreateNoticeLabel(hud.transform);
 
-            Wire(hud.AddComponent<HudView>(),
-                ("config", FlameSettings), ("flameChanged", flameChanged), ("flameStateChanged", flameState),
-                ("temperatureChanged", temperatureChanged), ("powerChanged", powerChanged),
-                ("flameFill", flameFill), ("temperatureFill", temperatureFill), ("powerFill", powerFill),
-                ("flameStateLabel", stateLabel));
             Wire(hud.AddComponent<InventoryView>(),
                 ("inventory", inventory), ("inventoryChanged", inventoryChanged), ("panel", inventoryPanel),
-                ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+                ("frame", PixelArt.GetSliced("UI_Frame", 4)), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
             Wire(hud.AddComponent<MessageHudView>(),
-                ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")), ("noticeRaised", noticeRaised),
-                ("promptLabel", promptLabel), ("noticeLabel", noticeLabel),
+                ("noticeRaised", noticeRaised), ("noticeLabel", noticeLabel),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")),
                 ("objectiveLabel", CreateObjectiveLabel(hud.transform)));
 
             var ridePanel = new GameObject("RidePanel", typeof(RectTransform));
             ridePanel.transform.SetParent(hud.transform, false);
             StretchFull((RectTransform)ridePanel.transform);
-            Text speedLabel = CreateLabel("SpeedLabel", ridePanel.transform, -248f, 40f, string.Empty);
-            Text fearLabel = CreateLabel("FearLabel", ridePanel.transform, -286f, 40f, "Страх: 0%");
-            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -324f, 40f, string.Empty);
-            Text repairLabel = CreateLabel("RepairLabel", ridePanel.transform, -362f, 170f, string.Empty);
-            CreateLabel("RideHint", ridePanel.transform, -538f, 40f, "A/D хода, E дія, W/S швидкість, G зігріти, Esc пауза");
+            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -212f, 40f, string.Empty);
+            Text repairLabel = CreateLabel("RepairLabel", ridePanel.transform, -252f, 170f, string.Empty);
             Wire(hud.AddComponent<BusHudView>(),
-                ("speedChanged", Channel<FloatEventChannel>("BusSpeedChanged")), ("tripChanged", Channel<FloatEventChannel>("TripChanged")),
-                ("fearChanged", fearChanged), ("faultsChanged", Channel<VoidEventChannel>("FaultsChanged")),
+                ("faultsChanged", Channel<VoidEventChannel>("FaultsChanged")),
                 ("repairTextChanged", Channel<StringEventChannel>("RepairTextChanged")),
-                ("speedLabel", speedLabel), ("fearLabel", fearLabel), ("faultsLabel", faultsLabel), ("repairLabel", repairLabel));
+                ("faultsLabel", faultsLabel), ("repairLabel", repairLabel));
 
             var stopPanel = new GameObject("StopPanel", typeof(RectTransform));
             stopPanel.transform.SetParent(hud.transform, false);
             StretchFull((RectTransform)stopPanel.transform);
-            Text healthLabel = CreateLabel("HealthLabel", stopPanel.transform, -248f, 40f, "Здоров'я: 100%");
-            Text darknessLabel = CreateLabel("DarknessLabel", stopPanel.transform, -286f, 40f, string.Empty);
-            CreateLabel("StopHint", stopPanel.transform, -324f, 40f, "WASD, миша: погляд, ЛКМ удар, E дія, F Спалах, R Підсвітити, Esc пауза");
-            Wire(hud.AddComponent<StopHudView>(),
-                ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")), ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")),
-                ("fearChanged", fearChanged), ("healthLabel", healthLabel), ("darknessLabel", darknessLabel));
 
-            Wire(hud.AddComponent<HudPanelSwitcher>(),
+            Wire(hud.AddComponent<HudView>(),
+                ("config", FlameSettings), ("flameChanged", flameChanged), ("flameStateChanged", flameState),
+                ("temperatureChanged", temperatureChanged), ("powerChanged", powerChanged), ("fearChanged", fearChanged),
+                ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")),
+                ("speedChanged", Channel<FloatEventChannel>("BusSpeedChanged")), ("tripChanged", Channel<FloatEventChannel>("TripChanged")),
+                ("gaugesRoot", gaugesRoot), ("ridePanel", ridePanel.transform), ("stopPanel", stopPanel.transform),
+                ("frame", PixelArt.GetSliced("UI_Frame", 4)), ("square", Square),
+                ("flameIcon", PixelArt.Get("UI_IconFlame")), ("heatIcon", PixelArt.Get("UI_IconHeat")), ("powerIcon", PixelArt.Get("UI_IconPower")),
+                ("fearIcon", PixelArt.Get("UI_IconFear")), ("healthIcon", PixelArt.Get("UI_IconHealth")),
+                ("trendArrow", PixelArt.Get("UI_Arrow")), ("trolleyIcon", PixelArt.Get("UI_Trolley")), ("stopIcon", PixelArt.Get("UI_StopMark")),
+                ("dial", PixelArt.Get("UI_Dial")), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+
+            var switcher = hud.AddComponent<HudPanelSwitcher>();
+            Wire(switcher,
                 ("gameStateChanged", gameStateChanged), ("ridePanel", ridePanel), ("stopPanel", stopPanel),
                 ("inventoryPanel", inventoryPanel.gameObject));
+            WireArray(switcher, "hiddenOnMap", new Object[] { gaugesRoot.gameObject });
             return hud;
+        }
+
+        private static Text CreateNoticeLabel(Transform parent)
+        {
+            Text label = CreateLabel("NoticeLabel", parent, -150f, 40f, string.Empty);
+            StyleCentered(label);
+            label.rectTransform.anchoredPosition = new Vector2(0f, -150f);
+            return label;
+        }
+
+        /// <summary>Напис посередині вгорі: під смугою шляху, де його не перекривають шкали.</summary>
+        private static void StyleCentered(Text label)
+        {
+            label.alignment = TextAnchor.UpperCenter;
+            label.color = new Color(1f, 0.93f, 0.8f);
+            RectTransform rect = label.rectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(1100f, rect.sizeDelta.y);
+            var outline = label.gameObject.AddComponent<Outline>();
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(1.5f, -1.5f);
         }
 
         private static AudioClip Sfx(string fileName) =>
@@ -328,14 +346,15 @@ namespace NightTrolleybus.EditorTools
             var menu = canvasObject.AddComponent<GameMenuView>();
             Wire(menu,
                 ("background", PixelArt.Get("MenuBackground")), ("square", Square), ("glow", PixelArt.Get("MenuGlow")),
+                ("candle", PixelArt.Get("Flame_Candle")), ("bowl", PixelArt.Get("Flame_Bowl")),
                 ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
             WireArray(menu, "flameFrames", new Object[] { PixelArt.Get("Flame_A"), PixelArt.Get("Flame_B"), PixelArt.Get("Flame_A"), PixelArt.Get("Flame_C") });
             return menu;
         }
 
-        private static CutsceneView CreateCutscene(GameObject root)
+        private static CutsceneView CreateCutscene(GameObject root, string objectName, string videoName)
         {
-            GameObject canvasObject = Child("Cutscene", root);
+            GameObject canvasObject = Child(objectName, root);
             var canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 40;
@@ -344,7 +363,7 @@ namespace NightTrolleybus.EditorTools
 
             var cutscene = canvasObject.AddComponent<CutsceneView>();
             Wire(cutscene,
-                ("clip", AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(Root + "/Video/katscena.mp4")),
+                ("clip", AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>($"{Root}/Video/{videoName}.mp4")),
                 ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
             return cutscene;
         }
@@ -353,8 +372,9 @@ namespace NightTrolleybus.EditorTools
         {
             var bubble = new GameObject("FlameBubble").AddComponent<Image>();
             bubble.transform.SetParent(hud.transform, false);
-            bubble.sprite = Square;
-            bubble.color = new Color(0.95f, 0.9f, 0.75f, 0.95f);
+            bubble.sprite = PixelArt.GetSliced("UI_Paper", 4);
+            bubble.type = Image.Type.Sliced;
+            bubble.color = Color.white;
             bubble.raycastTarget = false;
             bubble.rectTransform.sizeDelta = new Vector2(600f, 110f);
 
@@ -376,7 +396,8 @@ namespace NightTrolleybus.EditorTools
         private static EventDialogView CreateEventDialog(GameObject hud)
         {
             GameObject panel = CreatePanel("EventPanel", hud.transform, string.Empty);
-            panel.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.9f);
+            // Суцільний фон: шкали, мапа й репліки під подією лише відволікають.
+            panel.GetComponent<Image>().color = Color.black;
             Text titleLabel = panel.GetComponentInChildren<Text>();
             titleLabel.alignment = TextAnchor.UpperCenter;
             PlaceColumn(titleLabel.rectTransform, 340f, 80f);
@@ -414,13 +435,9 @@ namespace NightTrolleybus.EditorTools
             Text label = CreateLabel("ObjectiveLabel", parent, -28f, 110f, string.Empty);
             label.fontSize = 34;
             label.fontStyle = FontStyle.Bold;
+            StyleCentered(label);
             label.color = new Color(1f, 0.85f, 0.4f);
-            label.alignment = TextAnchor.UpperCenter;
-            // Праворуч від шкал, щоб ціль не перекривала інтерфейс.
-            RectTransform rect = label.rectTransform;
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-40f, -28f);
-            rect.sizeDelta = new Vector2(1380f, 110f);
+            label.rectTransform.anchoredPosition = new Vector2(0f, -68f);
             return label;
         }
 
@@ -430,30 +447,6 @@ namespace NightTrolleybus.EditorTools
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-        }
-
-        private static Image CreateBar(string objectName, Transform parent, float y, Color color)
-        {
-            var background = new GameObject(objectName).AddComponent<Image>();
-            background.transform.SetParent(parent, false);
-            background.sprite = Square;
-            background.color = new Color(0.1f, 0.1f, 0.1f, 0.9f);
-            background.raycastTarget = false;
-            RectTransform barRect = background.rectTransform;
-            barRect.anchorMin = barRect.anchorMax = barRect.pivot = new Vector2(0f, 1f);
-            barRect.anchoredPosition = new Vector2(32f, y);
-            barRect.sizeDelta = new Vector2(420f, 28f);
-
-            var fill = new GameObject("Fill").AddComponent<Image>();
-            fill.transform.SetParent(barRect, false);
-            fill.sprite = Square;
-            fill.color = color;
-            fill.raycastTarget = false;
-            fill.type = Image.Type.Filled;
-            fill.fillMethod = Image.FillMethod.Horizontal;
-            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
-            StretchFull(fill.rectTransform);
-            return fill;
         }
 
         private static GameObject CreatePanel(string objectName, Transform parent, string text)

@@ -66,24 +66,24 @@ namespace NightTrolleybus.Route
             string destination = target.Type.DisplayName();
 
             if (CanExit)
-                return $"Зупинка: {destination}. Підійдіть до зелених дверей посеред салону й натисніть E";
+                return Loc.F("Зупинка: {0}. Підійдіть до зелених дверей посеред салону й натисніть E", destination);
             if (IsArrived)
                 return bus.IsDriving
-                    ? $"Ви на місці: {destination}. Тримайте S, щоб зупинитися"
-                    : $"Ви на місці: {destination}. Сядьте за кермо й зупиніть тролейбус клавішею S";
+                    ? Loc.F("Ви на місці: {0}. Тримайте S, щоб зупинитися", destination)
+                    : Loc.F("Ви на місці: {0}. Сядьте за кермо й зупиніть тролейбус клавішею S", destination);
 
             if (GameContext.Faults != null && GameContext.Faults.IsActive(FaultType.PolesOff))
-                return "Штанги злетіли, тролейбус не їде. Підійдіть до червоної станції й натисніть E";
+                return Loc.T("Штанги злетіли, тролейбус не їде. Підійдіть до червоної станції й натисніть E");
             if (GameContext.Power != null && GameContext.Power.Current <= 0f)
-                return "Немає енергії! Застосуйте акумулятор (Q) або їдьте за кермом на W: аварійний хід повільний і палить Вогника";
+                return Loc.T("Немає енергії! Застосуйте акумулятор (Q) або їдьте за кермом на W: аварійний хід повільний і палить Вогника");
 
-            string kind = target.Type.StopScene() != null ? "зупинка" : "без зупинки";
+            string kind = Loc.T(target.Type.StopScene() != null ? "зупинка" : "без зупинки");
             if (bus.IsDriving)
-                return bus.Throttle > 0f ? $"Їдемо до: {destination} ({kind})" : $"Тримайте W, щоб їхати до: {destination} ({kind})";
+                return Loc.F(bus.Throttle > 0f ? "Їдемо до: {0} ({1})" : "Тримайте W, щоб їхати до: {0} ({1})", destination, kind);
 
             return bus.Speed > 0f || bus.Throttle > 0f
-                ? $"Їдемо до: {destination} ({kind})"
-                : $"Підійдіть до місця водія праворуч і натисніть E. Далі: {destination} ({kind})";
+                ? Loc.F("Їдемо до: {0} ({1})", destination, kind)
+                : Loc.F("Підійдіть до місця водія праворуч і натисніть E. Далі: {0} ({1})", destination, kind);
         }
 
         private void SetObjective(string objective)

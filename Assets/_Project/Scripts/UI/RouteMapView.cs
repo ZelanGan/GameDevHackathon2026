@@ -1,4 +1,5 @@
 using System.Linq;
+using NightTrolleybus.Core;
 using NightTrolleybus.Route;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +9,8 @@ namespace NightTrolleybus.UI
     /// <summary>Малює мапу маршруту: вузли-кнопки й лінії між ними.</summary>
     public class RouteMapView : MonoBehaviour
     {
+        private const float LowPower = 0.5f;
+
         private static readonly Vector2 NodeSize = new Vector2(190f, 64f);
 
         [SerializeField] private RectTransform root;
@@ -45,12 +48,19 @@ namespace NightTrolleybus.UI
             image.transform.SetParent(root, false);
             image.sprite = square;
             image.color = available ? new Color(0.95f, 0.65f, 0.3f) : visited ? new Color(0.45f, 0.35f, 0.25f) : new Color(0.2f, 0.2f, 0.24f);
+            // Коли енергії мало, доступне депо видно одразу: воно зелене, а не помаранчеве.
+            if (available && node.Type == NodeType.Depot && GameContext.Power.Normalized < LowPower)
+                image.color = new Color(0.45f, 0.95f, 0.55f);
             image.rectTransform.sizeDelta = NodeSize;
             image.rectTransform.anchoredPosition = Position(node);
 
             var button = image.gameObject.AddComponent<Button>();
             button.interactable = available;
-            button.onClick.AddListener(() => route.Select(node));
+            button.onClick.AddListener(() =>
+            {
+                GameContext.Audio?.Play(SoundId.UiClick);
+                route.Select(node);
+            });
 
             var label = new GameObject("Label").AddComponent<Text>();
             label.transform.SetParent(image.transform, false);
@@ -58,7 +68,7 @@ namespace NightTrolleybus.UI
             label.fontSize = 22;
             label.alignment = TextAnchor.MiddleCenter;
             label.color = available ? Color.black : new Color(0.75f, 0.75f, 0.75f);
-            label.text = node.Type.DisplayName();
+            label.text = $"{node.Type.DisplayName()}\n<size=15>{node.Type.Benefit()}</size>";
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = Vector2.zero;

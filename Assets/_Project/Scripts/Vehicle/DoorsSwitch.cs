@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Player;
 using UnityEngine;
 
@@ -13,6 +14,10 @@ namespace NightTrolleybus.Vehicle
 
         private void Awake() => doors = FindAnyObjectByType<DoorsWindows>();
 
-        public void Interact() => doors.Toggle();
+        public void Interact()
+        {
+            doors.Toggle();
+            GameContext.Audio?.Play(doors.IsOpen ? SoundId.DoorOpen : SoundId.DoorClose);
+        }
     }
 }

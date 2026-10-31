@@ -64,9 +64,15 @@ namespace NightTrolleybus.EditorTools
             foreach (Vector2 crate in new[] { new Vector2(10f, 5f), new Vector2(12f, -6f), new Vector2(26f, 6f), new Vector2(30f, -5f), new Vector2(46f, -3f) })
                 CreateCrate(level, crate);
 
-            GameObject charger = CreateArt("PowerCharger", null, new Vector3(5f, 6f, 0f), "Top_Charger", 1);
+            // Станція стоїть у кадрі біля входу й світиться сама, щоб її не треба було шукати в темряві.
+            GameObject charger = CreateArt("PowerCharger", null, new Vector3(7f, 2.5f, 0f), "Top_Charger", 1, Color.white, UnlitMaterial);
             AddFittedCollider(charger, true);
-            Wire(charger.AddComponent<PowerCharger>(), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
+            var beacon = charger.AddComponent<Light2D>();
+            beacon.lightType = Light2D.LightType.Point;
+            beacon.color = new Color(0.35f, 0.75f, 1f);
+            beacon.pointLightOuterRadius = 3.5f;
+            beacon.intensity = 1.2f;
+            Wire(charger.AddComponent<PowerCharger>(), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")), ("beacon", beacon));
 
             Pickup("Match", Match, 8f, -3f);
             Pickup("Candle", Candle, 14f, 8f);
@@ -109,7 +115,7 @@ namespace NightTrolleybus.EditorTools
             MakeRevealable(Pickup("Ticket_Hidden", Ticket, 48f, -10f));
             MakeRevealable(Pickup("Candle_Hidden", Candle, 57f, 10f));
 
-            FinishScene(MarketPath, player, new[] { new Vector2(16f, 0f), new Vector2(25f, 6f), new Vector2(31f, -6f), new Vector2(38f, 0f), new Vector2(47f, 7f), new Vector2(54f, -5f) });
+            FinishScene(MarketPath, player, new[] { new Vector2(16f, 0f), new Vector2(25f, 6f), new Vector2(31f, -6f), new Vector2(38f, 0f), new Vector2(47f, 7f), new Vector2(54f, -5f) }, 18f, 9f);
         }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Gun Shop Scene")]
@@ -171,7 +177,7 @@ namespace NightTrolleybus.EditorTools
             return true;
         }
 
-        private static void FinishScene(string path, GameObject player, Vector2[] enemies)
+        private static void FinishScene(string path, GameObject player, Vector2[] enemies, float slowSpawn = 28f, float fastSpawn = 14f)
         {
             GameObject enemyPrefab = GetOrCreateEnemyPrefab();
             foreach (Vector2 position in enemies)
@@ -180,8 +186,8 @@ namespace NightTrolleybus.EditorTools
                 enemy.transform.position = position;
             }
 
-            CreateDarkness(player.transform, enemyPrefab);
-            BusSceneBuilder.CreateFollowCameras(player.transform, 6f, 0f);
+            CreateDarkness(player.transform, enemyPrefab, slowSpawn, fastSpawn);
+            BusSceneBuilder.CreateFollowCameras(player.transform, 4f, 0f);
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
             AssetDatabase.SaveAssets();
@@ -288,12 +294,14 @@ namespace NightTrolleybus.EditorTools
             SetBool(revealable, "hiddenPassage", hiddenPassage);
         }
 
-        private static void CreateDarkness(Transform player, GameObject enemyPrefab)
+        private static void CreateDarkness(Transform player, GameObject enemyPrefab, float slowSpawn, float fastSpawn)
         {
             GameObject wall = CreateSprite("DarknessWall", null, new Vector3(92f, 0f, 0f), new Vector3(60f, 60f, 1f), Color.black, 50, UnlitMaterial);
             var darkness = new GameObject("Darkness").AddComponent<DarknessCreep>();
             Wire(darkness, ("wall", wall.transform), ("player", player), ("enemyPrefab", enemyPrefab),
                 ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")));
+            SetFloat(darkness, "slowSpawnInterval", slowSpawn);
+            SetFloat(darkness, "fastSpawnInterval", fastSpawn);
         }
 
         private static GameObject GetOrCreateEnemyPrefab()

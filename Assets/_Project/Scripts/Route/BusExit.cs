@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Player;
 using UnityEngine;
 
@@ -27,6 +28,10 @@ namespace NightTrolleybus.Route
             doorSprite.enabled = canExit;
         }
 
-        public void Interact() => trip.Exit();
+        public void Interact()
+        {
+            GameContext.Audio?.Play(SoundId.DoorOpen);
+            trip.Exit();
+        }
     }
 }

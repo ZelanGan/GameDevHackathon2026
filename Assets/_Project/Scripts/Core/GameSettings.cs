@@ -13,6 +13,7 @@ namespace NightTrolleybus.Core
     public static class GameSettings
     {
         private const string VolumeKey = "settings.volume";
+        private const string MusicVolumeKey = "settings.musicVolume";
         private const string LanguageKey = "settings.language";
 
         public static event Action LanguageChanged;
@@ -26,6 +27,13 @@ namespace NightTrolleybus.Core
                 PlayerPrefs.SetFloat(VolumeKey, volume);
                 AudioListener.volume = volume;
             }
+        }
+
+        /// <summary>Гучність лише музики. Загальна гучність діє поверх неї.</summary>
+        public static float MusicVolume
+        {
+            get => PlayerPrefs.GetFloat(MusicVolumeKey, 1f);
+            set => PlayerPrefs.SetFloat(MusicVolumeKey, Mathf.Clamp01(value));
         }
 
         public static GameLanguage Language

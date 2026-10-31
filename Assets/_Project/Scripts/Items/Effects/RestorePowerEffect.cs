@@ -11,6 +11,10 @@ namespace NightTrolleybus.Items.Effects
 
         public override string Description => $"+{Mathf.RoundToInt(amount)} до енергії тролейбуса";
 
-        public override void Apply() => GameContext.Power?.Restore(amount);
+        public override void Apply()
+        {
+            GameContext.Power?.Restore(amount);
+            GameContext.Audio?.Play(SoundId.PowerUp);
+        }
     }
 }

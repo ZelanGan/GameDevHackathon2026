@@ -14,6 +14,16 @@ namespace NightTrolleybus.Core
         public static IPower Power { get; private set; }
         public static IVehicleFaults Faults { get; private set; }
 
+        public static GameAudio Audio { get; private set; }
+
+        public static void Register(GameAudio audio) => Audio = audio;
+
+        public static void Unregister(GameAudio audio)
+        {
+            if (Audio == audio)
+                Audio = null;
+        }
+
         public static IInventory Inventory { get; private set; }
 
         public static void Register(IInventory inventory) => Inventory = inventory;
@@ -74,6 +84,7 @@ namespace NightTrolleybus.Core
             Power = null;
             Faults = null;
             Inventory = null;
+            Audio = null;
         }
     }
 }

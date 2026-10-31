@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using UnityEngine;
 
 namespace NightTrolleybus.Player
@@ -11,10 +12,24 @@ namespace NightTrolleybus.Player
         [SerializeField] private Sprite idleFrame;
         [SerializeField] private Sprite[] walkFrames;
         [SerializeField] private float framesPerSecond = 8f;
+        [SerializeField] private float stepInterval = 0.34f;
+
+        private float stepTimer;
+
+        private void UpdateSteps(bool isWalking)
+        {
+            stepTimer -= Time.deltaTime;
+            if (!isWalking || stepTimer > 0f)
+                return;
+
+            stepTimer = stepInterval;
+            GameContext.Audio?.Play(SoundId.Step);
+        }
 
         private void Update()
         {
             bool isWalking = body.linearVelocity.sqrMagnitude > 0.01f;
+            UpdateSteps(isWalking);
             spriteRenderer.sprite = isWalking
                 ? walkFrames[(int)(Time.time * framesPerSecond) % walkFrames.Length]
                 : idleFrame;

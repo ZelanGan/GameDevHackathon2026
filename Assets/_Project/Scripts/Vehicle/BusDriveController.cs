@@ -31,11 +31,16 @@ namespace NightTrolleybus.Vehicle
             if (IsDriving)
                 SetThrottle(Throttle + moveAction.ReadValue<Vector2>().y * config.ThrottleChangePerSecond * Time.deltaTime);
 
-            // Без енергії важіль не діє: тролейбус котиться до зупинки.
             bool hasPower = GameContext.Power != null &&
                 GameContext.Power.TryConsume(config.PowerPerSecondAtFullSpeed * Speed * Time.deltaTime);
             bool polesOff = GameContext.Faults != null && GameContext.Faults.IsActive(FaultType.PolesOff);
-            float target = hasPower && !polesOff ? Throttle : 0f;
+
+            // Без енергії лишається аварійний хід: повільно й ціною полум'я, зате партія не заходить у глухий кут.
+            float target = hasPower ? Throttle : Mathf.Min(Throttle, config.EmergencySpeed);
+            if (polesOff)
+                target = 0f;
+            if (!hasPower && Speed > 0f)
+                GameContext.Flame?.Drain(config.EmergencyFlamePerSecond * Time.deltaTime);
 
             float newSpeed = Mathf.MoveTowards(Speed, target, config.AccelerationPerSecond * Time.deltaTime);
             if (Mathf.Approximately(newSpeed, Speed))

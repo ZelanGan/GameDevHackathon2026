@@ -56,27 +56,33 @@ namespace NightTrolleybus.Vehicle
                 case BusIncident.PolesOff:
                     GameContext.Faults?.Trigger(FaultType.PolesOff);
                     noticeRaised.Raise("Штанги злетіли з дротів!");
+                    GameContext.Audio?.Play(SoundId.Spark);
                     break;
                 case BusIncident.FuseBlown:
                     GameContext.Faults?.Trigger(FaultType.FuseBlown);
                     noticeRaised.Raise("Згорів запобіжник!");
+                    GameContext.Audio?.Play(SoundId.Spark);
                     break;
                 case BusIncident.WiresLoose:
                     GameContext.Faults?.Trigger(FaultType.WiresLoose);
                     noticeRaised.Raise("Роз'єдналися проводи, енергія витікає!");
+                    GameContext.Audio?.Play(SoundId.Spark);
                     break;
                 case BusIncident.Debris:
                     GameContext.Power?.TryConsume(debrisPowerLoss);
                     noticeRaised.Raise("Удар об сміття на дорозі!");
+                    GameContext.Audio?.Play(SoundId.Thump);
                     break;
                 case BusIncident.LineFlicker:
                     GameContext.Power?.TryConsume(flickerPowerLoss);
                     noticeRaised.Raise("Лінія мерехтить, напруга просіла.");
+                    GameContext.Audio?.Play(SoundId.LineFlicker);
                     break;
                 case BusIncident.DarknessKnock:
                     GameContext.Temperature?.AddHeat(-knockHeatLoss);
                     StartCoroutine(KnockFear());
                     noticeRaised.Raise("Темрява стукає у вікна...");
+                    GameContext.Audio?.Play(SoundId.DoorKnock);
                     break;
             }
         }

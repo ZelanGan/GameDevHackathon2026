@@ -222,7 +222,6 @@ namespace NightTrolleybus.EditorTools
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.GetUniversalAdditionalCameraData().renderPostProcessing = true;
-            cameraObject.AddComponent<AudioListener>();
             return camera;
         }
 

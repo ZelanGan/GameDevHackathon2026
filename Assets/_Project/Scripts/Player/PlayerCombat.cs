@@ -1,4 +1,5 @@
 using System.Collections;
+using NightTrolleybus.Core;
 using NightTrolleybus.Items;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -43,13 +44,17 @@ namespace NightTrolleybus.Player
             Vector2 direction = motor.FacingDirection;
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             StartCoroutine(ShowSwing(direction, angle, weapon.Range));
+            GameContext.Audio?.Play(SoundId.Swing);
 
             Vector2 center = (Vector2)transform.position + direction * (weapon.Range / 2f);
             int count = Physics2D.OverlapBox(center, new Vector2(weapon.Range, 1.6f), angle, ContactFilter2D.noFilter, hits);
             for (int i = 0; i < count; i++)
             {
                 if (hits[i].gameObject != gameObject && hits[i].TryGetComponent(out Health target))
+                {
                     target.TakeDamage(weapon.Damage);
+                    GameContext.Audio?.Play(SoundId.Hit);
+                }
             }
         }
 

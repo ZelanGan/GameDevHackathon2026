@@ -152,7 +152,8 @@ namespace NightTrolleybus.UI
             BeginPage(isMain ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 0.5f), isMain ? new Vector2(130f, 90f) : new Vector2(0f, 150f),
                 isMain ? TextAnchor.UpperLeft : TextAnchor.UpperCenter);
             AddTitle(MenuText.Get("settings"), null);
-            AddVolumeSlider();
+            AddVolumeSlider("volume", GameSettings.Volume, value => GameSettings.Volume = value);
+            AddVolumeSlider("musicVolume", GameSettings.MusicVolume, value => GameSettings.MusicVolume = value);
             AddButton($"{MenuText.Get("language")}: {MenuText.CurrentLanguageName}", true, NextLanguage);
             AddNote(MenuText.Get("languageNote"));
             AddButton(MenuText.Get("back"), true, back);
@@ -288,7 +289,11 @@ namespace NightTrolleybus.UI
             colors.fadeDuration = 0.08f;
             button.colors = colors;
             button.interactable = available;
-            button.onClick.AddListener(() => onClick());
+            button.onClick.AddListener(() =>
+            {
+                GameContext.Audio?.Play(SoundId.UiClick);
+                onClick();
+            });
 
             var label = new GameObject("Label").AddComponent<Text>();
             label.transform.SetParent(image.transform, false);
@@ -308,9 +313,9 @@ namespace NightTrolleybus.UI
             return image.rectTransform;
         }
 
-        private void AddVolumeSlider()
+        private void AddVolumeSlider(string textKey, float current, Action<float> apply)
         {
-            AddText($"{MenuText.Get("volume")}: {Mathf.RoundToInt(GameSettings.Volume * 100f)}%", 30, 48f, FontStyle.Normal, Color.white);
+            AddText($"{MenuText.Get(textKey)}: {Mathf.RoundToInt(current * 100f)}%", 30, 48f, FontStyle.Normal, Color.white);
             var volumeLabel = pageItems[pageItems.Count - 1].GetComponent<Text>();
 
             var track = new GameObject("VolumeSlider").AddComponent<Image>();
@@ -340,11 +345,11 @@ namespace NightTrolleybus.UI
             slider.handleRect = handle.rectTransform;
             slider.minValue = 0f;
             slider.maxValue = 1f;
-            slider.SetValueWithoutNotify(GameSettings.Volume);
+            slider.SetValueWithoutNotify(current);
             slider.onValueChanged.AddListener(value =>
             {
-                GameSettings.Volume = value;
-                volumeLabel.text = $"{MenuText.Get("volume")}: {Mathf.RoundToInt(value * 100f)}%";
+                apply(value);
+                volumeLabel.text = $"{MenuText.Get(textKey)}: {Mathf.RoundToInt(value * 100f)}%";
             });
 
             pageItems.Add(track.gameObject);

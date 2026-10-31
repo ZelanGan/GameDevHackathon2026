@@ -53,6 +53,7 @@ namespace NightTrolleybus.Flame
                 return;
 
             flashTriggered.Raise();
+            GameContext.Audio?.Play(SoundId.Flash);
             int count = Physics2D.OverlapCircle(origin.position, flashRadius, ContactFilter2D.noFilter, hits);
             for (int i = 0; i < count; i++)
             {
@@ -66,6 +67,7 @@ namespace NightTrolleybus.Flame
             if (revealActive || !TrySpend(revealCost))
                 return;
 
+            GameContext.Audio?.Play(SoundId.Reveal);
             StartCoroutine(RevealRoutine());
         }
 
@@ -79,7 +81,10 @@ namespace NightTrolleybus.Flame
             }
 
             if (TrySpend(warmCost))
+            {
                 GameContext.Temperature.AddHeat(warmHeat);
+                GameContext.Audio?.Play(SoundId.FlameFed);
+            }
         }
 
         private IEnumerator RevealRoutine()

@@ -9,7 +9,7 @@ namespace NightTrolleybus.Items.Effects
     {
         [SerializeField] private float amount = 10f;
 
-        public override string Description => $"+{Mathf.RoundToInt(amount)} до сили Вогника";
+        public override string Description => Loc.F("+{0} до сили Вогника", Mathf.RoundToInt(amount));
 
         public override void Apply()
         {

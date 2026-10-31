@@ -10,6 +10,8 @@ namespace NightTrolleybus.UI
         [SerializeField] private GameObject ridePanel;
         [SerializeField] private GameObject stopPanel;
         [SerializeField] private GameObject inventoryPanel;
+        [Tooltip("Шкали й стан Вогника: на мапі вони лише заважають")]
+        [SerializeField] private GameObject[] hiddenOnMap;
 
         private void OnEnable() => gameStateChanged.Raised += OnStateChanged;
 
@@ -20,6 +22,8 @@ namespace NightTrolleybus.UI
             ridePanel.SetActive(state == "Ride");
             stopPanel.SetActive(state == "Stop");
             inventoryPanel.SetActive(state == "Ride" || state == "Stop");
+            foreach (GameObject element in hiddenOnMap)
+                element.SetActive(state != "Map");
         }
     }
 }

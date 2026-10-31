@@ -174,7 +174,20 @@ namespace NightTrolleybus.EditorTools
                 ("motor", player.GetComponent<PlayerMotor2D>()), ("body", player.GetComponent<Rigidbody2D>()),
                 ("spriteRenderer", body.GetComponent<SpriteRenderer>()), ("idleFrame", idle));
             WireArray(view, "walkFrames", new Object[] { PixelArt.Get($"{spritePrefix}Player_Walk_A"), idle, PixelArt.Get($"{spritePrefix}Player_Walk_B"), idle });
+
+            // Спиною водія видно лише згори: у салоні він ходить тільки вбік.
+            if (spritePrefix.Length == 0)
+                return;
+
+            Sprite backIdle = PixelArt.Get($"{spritePrefix}Player_Back_Idle");
+            Wire(view, ("backIdleFrame", backIdle));
+            WireArray(view, "backWalkFrames", new Object[] { PixelArt.Get($"{spritePrefix}Player_Back_Walk_A"), backIdle, PixelArt.Get($"{spritePrefix}Player_Back_Walk_B"), backIdle });
         }
+
+        public static void AddInteractor(GameObject player) =>
+            Wire(player.AddComponent<PlayerInteractor>(),
+                ("keyBadge", PixelArt.Get("Key_E")), ("badgeMaterial", UnlitMaterial),
+                ("labelFont", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
 
         public static void CreateFlame(Transform parent)
         {
@@ -185,6 +198,10 @@ namespace NightTrolleybus.EditorTools
             var flameLight = flame.AddComponent<Light2D>();
             flameLight.lightType = Light2D.LightType.Point;
 
+            // Свічка окремо: розмір змінює лише вогник, а темніє вона разом зі світлом, яке він дає.
+            CreateArt("Candle", flame.transform, Vector3.zero, "Flame_Candle", 9);
+            // Чаша перекриває низ свічки, тому свічка наче стоїть у ній.
+            CreateArt("Bowl", flame.transform, new Vector3(0f, -0.3125f, 0f), "Flame_Bowl", 11);
             GameObject sprite = CreateArt("Sprite", flame.transform, Vector3.zero, "Flame_A", 10, Color.white, UnlitMaterial);
             var spriteRenderer = sprite.GetComponent<SpriteRenderer>();
             AddFrameLoop(sprite, 7f, "Flame_A", "Flame_B", "Flame_A", "Flame_C");
@@ -205,11 +222,11 @@ namespace NightTrolleybus.EditorTools
             SetBool(abilities, "canWarm", canWarm);
         }
 
-        public static void CreateGlobalLight()
+        public static void CreateGlobalLight(float intensity = 0.03f)
         {
             var globalLight = new GameObject("Global Light 2D").AddComponent<Light2D>();
             globalLight.lightType = Light2D.LightType.Global;
-            globalLight.intensity = 0.03f;
+            globalLight.intensity = intensity;
         }
 
         public static Camera CreateMainCamera()

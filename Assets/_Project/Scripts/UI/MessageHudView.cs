@@ -4,12 +4,10 @@ using UnityEngine.UI;
 
 namespace NightTrolleybus.UI
 {
-    /// <summary>Повідомлення й підказка взаємодії.</summary>
+    /// <summary>Повідомлення й поточна ціль.</summary>
     public class MessageHudView : MonoBehaviour
     {
-        [SerializeField] private StringEventChannel promptChanged;
         [SerializeField] private StringEventChannel noticeRaised;
-        [SerializeField] private Text promptLabel;
         [SerializeField] private Text noticeLabel;
         [SerializeField] private StringEventChannel objectiveChanged;
         [SerializeField] private Text objectiveLabel;
@@ -19,14 +17,12 @@ namespace NightTrolleybus.UI
 
         private void OnEnable()
         {
-            promptChanged.Raised += OnPromptChanged;
             noticeRaised.Raised += OnNoticeRaised;
             objectiveChanged.Raised += OnObjectiveChanged;
         }
 
         private void OnDisable()
         {
-            promptChanged.Raised -= OnPromptChanged;
             noticeRaised.Raised -= OnNoticeRaised;
             objectiveChanged.Raised -= OnObjectiveChanged;
         }
@@ -43,8 +39,6 @@ namespace NightTrolleybus.UI
             if (noticeTimer <= 0f)
                 noticeLabel.text = string.Empty;
         }
-
-        private void OnPromptChanged(string prompt) => promptLabel.text = prompt;
 
         private void OnNoticeRaised(string notice)
         {

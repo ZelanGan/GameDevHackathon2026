@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Items;
 using UnityEngine;
 
@@ -16,7 +17,7 @@ namespace NightTrolleybus.Passengers
         [Tooltip("Скільки тепла за секунду краде пасажир")]
         [SerializeField] private float heatStealPerSecond;
 
-        public string DisplayName => displayName;
+        public string DisplayName => Loc.T(displayName);
         public Color Color => color;
         public ItemData Gift => gift;
         public float Fear => fear;

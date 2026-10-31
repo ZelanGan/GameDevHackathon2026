@@ -56,7 +56,7 @@ namespace NightTrolleybus.Core
         }
     }
 
-    /// <summary>Текстова подія: час стоїть, сцена під нею лишається видимою.</summary>
+    /// <summary>Текстова подія: час стоїть, суцільна панель закриває все під нею.</summary>
     public class EventState : IGameState
     {
         private readonly GameManager manager;
@@ -77,7 +77,7 @@ namespace NightTrolleybus.Core
         public void Exit() => manager.CloseEvent();
     }
 
-    /// <summary>Кінець партії: поразка або перемога.</summary>
+    /// <summary>Кінець партії поразкою. Перемога завершується катсценою й поверненням у меню.</summary>
     public class EndState : IGameState
     {
         private readonly GameManager manager;

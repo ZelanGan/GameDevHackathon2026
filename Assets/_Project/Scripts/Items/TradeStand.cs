@@ -18,13 +18,15 @@ namespace NightTrolleybus.Items
 
         private string RewardName => rewardWeapon != null ? rewardWeapon.DisplayName : rewardItem.DisplayName;
 
-        public string Prompt => $"{RewardName} за {costCount} × {costItem.DisplayName}";
+        public string Prompt => Loc.F("{0} за {1} × {2}", RewardName, costCount, costItem.DisplayName);
+
+        public string Label => Prompt;
 
         public void Interact()
         {
             if (GameContext.Inventory.Count(costItem) < costCount)
             {
-                noticeRaised.Raise($"Бракує: {costItem.DisplayName}");
+                noticeRaised.Raise(Loc.F("Бракує: {0}", costItem.DisplayName));
                 return;
             }
 
@@ -33,7 +35,7 @@ namespace NightTrolleybus.Items
                 GameContext.Inventory.TryRemove(costItem, costCount);
                 FindAnyObjectByType<PlayerLoadout>().Equip(rewardWeapon);
                 GameContext.Audio?.Play(SoundId.Lock);
-                noticeRaised.Raise($"Нова зброя: {rewardWeapon.DisplayName}");
+                noticeRaised.Raise(Loc.F("Нова зброя: {0}", rewardWeapon.DisplayName));
                 return;
             }
 

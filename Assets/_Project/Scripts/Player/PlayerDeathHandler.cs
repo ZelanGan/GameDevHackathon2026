@@ -9,7 +9,7 @@ namespace NightTrolleybus.Player
     public class PlayerDeathHandler : MonoBehaviour
     {
         [SerializeField] private Transform respawnPoint;
-        [SerializeField] private float flameLoss = 25f;
+        [SerializeField] private float flameLoss = 15f;
         [SerializeField] private StringEventChannel noticeRaised;
 
         private Health health;

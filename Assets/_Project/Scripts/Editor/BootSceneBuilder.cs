@@ -129,12 +129,12 @@ namespace NightTrolleybus.EditorTools
             Wire(eventRunner, ("view", dialog), ("introEvent", NarrativeContent.Intro()),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")));
 
-            GameObject pausePanel = CreatePanel("PausePanel", hud.transform, "ПАУЗА\nP: продовжити");
+            GameMenuView menu = CreateMenu(root);
             GameObject endPanel = CreatePanel("EndPanel", hud.transform, string.Empty);
             Text endLabel = endPanel.GetComponentInChildren<Text>();
             endLabel.alignment = TextAnchor.LowerCenter;
             PlaceColumn(endLabel.rectTransform, 300f, 380f);
-            Button restart = CreateButton("RestartButton", endPanel.transform, "Нова гра");
+            Button restart = CreateButton("RestartButton", endPanel.transform, "У головне меню");
 
             Wire(gameManager,
                 ("sceneLoader", sceneLoader), ("route", route), ("saveSystem", saveSystem), ("roadEvents", eventRunner),
@@ -142,7 +142,7 @@ namespace NightTrolleybus.EditorTools
                 ("stopCompleted", Channel<VoidEventChannel>("StopCompleted")), ("inBusChanged", inBusChanged),
                 ("gameStateChanged", gameStateChanged), ("noticeRaised", noticeRaised),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")),
-                ("pausePanel", pausePanel), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
+                ("menu", menu), ("endPanel", endPanel), ("endLabel", endLabel), ("restartButton", restart));
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), BootPath);
             AssetDatabase.SaveAssets();
@@ -205,9 +205,10 @@ namespace NightTrolleybus.EditorTools
             Image temperatureFill = CreateBar("TemperatureBar", hud.transform, -66f, new Color(0.4f, 0.7f, 1f));
             Image powerFill = CreateBar("PowerBar", hud.transform, -100f, new Color(1f, 0.9f, 0.3f));
             Text stateLabel = CreateLabel("StateLabel", hud.transform, -134f, 40f, string.Empty);
-            Text inventoryLabel = CreateLabel("InventoryLabel", hud.transform, -172f, 40f, string.Empty);
-            Text noticeLabel = CreateLabel("NoticeLabel", hud.transform, -210f, 40f, string.Empty);
-            Text promptLabel = CreateLabel("PromptLabel", hud.transform, -248f, 40f, string.Empty);
+            var inventoryPanel = new GameObject("InventoryPanel", typeof(RectTransform)).GetComponent<RectTransform>();
+            inventoryPanel.SetParent(hud.transform, false);
+            Text noticeLabel = CreateLabel("NoticeLabel", hud.transform, -172f, 40f, string.Empty);
+            Text promptLabel = CreateLabel("PromptLabel", hud.transform, -210f, 40f, string.Empty);
 
             Wire(hud.AddComponent<HudView>(),
                 ("config", FlameSettings), ("flameChanged", flameChanged), ("flameStateChanged", flameState),
@@ -215,7 +216,8 @@ namespace NightTrolleybus.EditorTools
                 ("flameFill", flameFill), ("temperatureFill", temperatureFill), ("powerFill", powerFill),
                 ("flameStateLabel", stateLabel));
             Wire(hud.AddComponent<InventoryView>(),
-                ("inventory", inventory), ("inventoryChanged", inventoryChanged), ("label", inventoryLabel));
+                ("inventory", inventory), ("inventoryChanged", inventoryChanged), ("panel", inventoryPanel),
+                ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
             Wire(hud.AddComponent<MessageHudView>(),
                 ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")), ("noticeRaised", noticeRaised),
                 ("promptLabel", promptLabel), ("noticeLabel", noticeLabel),
@@ -225,11 +227,11 @@ namespace NightTrolleybus.EditorTools
             var ridePanel = new GameObject("RidePanel", typeof(RectTransform));
             ridePanel.transform.SetParent(hud.transform, false);
             StretchFull((RectTransform)ridePanel.transform);
-            Text speedLabel = CreateLabel("SpeedLabel", ridePanel.transform, -286f, 40f, string.Empty);
-            Text fearLabel = CreateLabel("FearLabel", ridePanel.transform, -324f, 40f, "Страх: 0%");
-            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -362f, 40f, string.Empty);
-            Text repairLabel = CreateLabel("RepairLabel", ridePanel.transform, -400f, 170f, string.Empty);
-            CreateLabel("RideHint", ridePanel.transform, -576f, 40f, "A/D хода, E дія, W/S швидкість, Tab/Q предмет, G зігріти, P пауза");
+            Text speedLabel = CreateLabel("SpeedLabel", ridePanel.transform, -248f, 40f, string.Empty);
+            Text fearLabel = CreateLabel("FearLabel", ridePanel.transform, -286f, 40f, "Страх: 0%");
+            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -324f, 40f, string.Empty);
+            Text repairLabel = CreateLabel("RepairLabel", ridePanel.transform, -362f, 170f, string.Empty);
+            CreateLabel("RideHint", ridePanel.transform, -538f, 40f, "A/D хода, E дія, W/S швидкість, G зігріти, Esc пауза");
             Wire(hud.AddComponent<BusHudView>(),
                 ("speedChanged", Channel<FloatEventChannel>("BusSpeedChanged")), ("tripChanged", Channel<FloatEventChannel>("TripChanged")),
                 ("fearChanged", fearChanged), ("faultsChanged", Channel<VoidEventChannel>("FaultsChanged")),
@@ -239,9 +241,9 @@ namespace NightTrolleybus.EditorTools
             var stopPanel = new GameObject("StopPanel", typeof(RectTransform));
             stopPanel.transform.SetParent(hud.transform, false);
             StretchFull((RectTransform)stopPanel.transform);
-            Text healthLabel = CreateLabel("HealthLabel", stopPanel.transform, -286f, 40f, "Здоров'я: 100%");
-            Text darknessLabel = CreateLabel("DarknessLabel", stopPanel.transform, -324f, 40f, string.Empty);
-            CreateLabel("StopHint", stopPanel.transform, -362f, 40f, "WASD, миша: погляд, ЛКМ удар, E дія, F Спалах, R Підсвітити, Tab/Q предмет, P пауза");
+            Text healthLabel = CreateLabel("HealthLabel", stopPanel.transform, -248f, 40f, "Здоров'я: 100%");
+            Text darknessLabel = CreateLabel("DarknessLabel", stopPanel.transform, -286f, 40f, string.Empty);
+            CreateLabel("StopHint", stopPanel.transform, -324f, 40f, "WASD, миша: погляд, ЛКМ удар, E дія, F Спалах, R Підсвітити, Esc пауза");
             Wire(hud.AddComponent<StopHudView>(),
                 ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")), ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")),
                 ("fearChanged", fearChanged), ("healthLabel", healthLabel), ("darknessLabel", darknessLabel));
@@ -249,6 +251,23 @@ namespace NightTrolleybus.EditorTools
             Wire(hud.AddComponent<HudPanelSwitcher>(),
                 ("gameStateChanged", gameStateChanged), ("ridePanel", ridePanel), ("stopPanel", stopPanel));
             return hud;
+        }
+
+        private static GameMenuView CreateMenu(GameObject root)
+        {
+            GameObject canvasObject = Child("Menu", root);
+            var canvas = canvasObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 30;
+            AddScaler(canvasObject);
+            canvasObject.AddComponent<GraphicRaycaster>();
+
+            var menu = canvasObject.AddComponent<GameMenuView>();
+            Wire(menu,
+                ("background", PixelArt.Get("MenuBackground")), ("square", Square), ("glow", PixelArt.Get("MenuGlow")),
+                ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+            WireArray(menu, "flameFrames", new Object[] { PixelArt.Get("Flame_A"), PixelArt.Get("Flame_B"), PixelArt.Get("Flame_A"), PixelArt.Get("Flame_C") });
+            return menu;
         }
 
         private static void CreateBubble(GameObject hud)

@@ -61,6 +61,8 @@ namespace NightTrolleybus.EditorTools
             { "Building_B", () => Building(2, 128, 192) },
             { "Building_C", () => Building(3, 96, 224) },
             { "Swing", Swing },
+            { "MenuBackground", MenuBackground },
+            { "MenuGlow", MenuGlow },
             { "Top_Player_Idle", () => TopPerson(0) },
             { "Top_Player_Walk_A", () => TopPerson(1) },
             { "Top_Player_Walk_B", () => TopPerson(-1) },
@@ -463,6 +465,95 @@ namespace NightTrolleybus.EditorTools
             {
                 int height = 2 + (x * 9 / 45);
                 c.Rect(x, 6 - height / 2, 1, height, new Color(1f, 1f, 1f, 0.5f + x / 90f));
+            }
+
+            return c;
+        }
+
+        // Заставка меню: згасле місто, дроти й тролейбус з єдиним теплим вікном.
+        private static Canvas MenuBackground()
+        {
+            const int width = 480;
+            const int height = 270;
+            var random = new System.Random(7);
+            var c = new Canvas(width, height);
+
+            for (int y = 0; y < height; y++)
+                c.Rect(0, y, width, 1, Color.Lerp(C(30, 26, 50), C(5, 6, 16), y / (float)height));
+
+            // Кілька останніх зір, решта вже згасла.
+            for (int i = 0; i < 26; i++)
+                c.Set(random.Next(width), 150 + random.Next(120), random.Next(4) == 0 ? C(190, 190, 220) : C(80, 80, 110));
+
+            MenuSkyline(c, random, C(14, 15, 30), 70, 150, 34, 0);
+            MenuSkyline(c, random, C(22, 21, 40), 60, 110, 46, 14);
+
+            c.Rect(0, 0, width, 50, C(13, 13, 18));
+            c.Rect(0, 49, width, 1, C(40, 38, 46));
+            for (int x = 6; x < width; x += 44)
+                c.Rect(x, 24, 22, 2, C(70, 68, 66));
+
+            // Контактні дроти.
+            c.Rect(0, 200, width, 1, C(60, 60, 76));
+            c.Rect(0, 206, width, 1, C(60, 60, 76));
+
+            const int busX = 225;
+            const int busRight = 455;
+            Color hull = C(38, 30, 34);
+            c.Rect(busX, 52, busRight - busX, 22, C(74, 28, 26));
+            c.Rect(busX, 74, busRight - busX, 3, C(150, 120, 80));
+            c.Rect(busX, 77, busRight - busX, 58, hull);
+            c.Rect(busX + 4, 135, busRight - busX - 8, 4, C(26, 22, 26));
+
+            // Штанги до дротів.
+            for (int i = 0; i < 62; i++)
+            {
+                c.Rect(320 + i, 139 + i, 2, 1, Metal);
+                c.Rect(306 + i, 139 + i + (i < 61 ? 0 : 5), 2, 1, MetalDark);
+            }
+
+            // Вікна темні, крім одного: там сидить Вогник.
+            for (int x = busX + 10; x < busRight - 30; x += 36)
+            {
+                bool lit = x + 15 >= 322 && x + 15 < 358;
+                c.Rect(x, 88, 30, 38, lit ? C(150, 82, 34) : C(16, 18, 30));
+                c.Rect(x, 88, 30, 2, MetalDark);
+            }
+
+            c.Rect(busRight - 26, 84, 22, 44, C(22, 28, 44));
+            c.Ellipse(busX + 50, 50, 15, 15, Boots);
+            c.Ellipse(busX + 50, 50, 7, 7, MetalDark);
+            c.Ellipse(busRight - 50, 50, 15, 15, Boots);
+            c.Ellipse(busRight - 50, 50, 7, 7, MetalDark);
+            return c;
+        }
+
+        private static void MenuSkyline(Canvas c, System.Random random, Color color, int minHeight, int maxHeight, int blockWidth, int start)
+        {
+            for (int x = start; x < 480; x += blockWidth + random.Next(8))
+            {
+                int blockHeight = random.Next(minHeight, maxHeight);
+                c.Rect(x, 40, blockWidth, blockHeight, color);
+                for (int y = 56; y < 34 + blockHeight; y += 12)
+                {
+                    for (int wx = x + 5; wx < x + blockWidth - 5; wx += 9)
+                        c.Rect(wx, y, 4, 6, random.Next(40) == 0 ? C(120, 92, 50) : C(10, 10, 20));
+                }
+            }
+        }
+
+        private static Canvas MenuGlow()
+        {
+            const int size = 128;
+            var c = new Canvas(size, size);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x, y), new Vector2(size / 2f, size / 2f)) / (size / 2f);
+                    float alpha = Mathf.Clamp01(1f - distance);
+                    c.Set(x, y, new Color(1f, 1f, 1f, alpha * alpha));
+                }
             }
 
             return c;

@@ -9,6 +9,8 @@ namespace NightTrolleybus.Items.Effects
     {
         [SerializeField] private float amount = 10f;
 
+        public override string Description => $"+{Mathf.RoundToInt(amount)} до сили Вогника";
+
         public override void Apply() => GameContext.Flame?.Restore(amount);
     }
 }

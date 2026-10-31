@@ -13,9 +13,12 @@ MonoBehaviour:
   m_Name: FlameConfig
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Flame.FlameConfig
   maxFlame: 100
-  startFlame: 70
-  baseDrainPerSecond: 0.5
+  startFlame: 85
+  baseDrainPerSecond: 0.2
   stateHysteresis: 2
+  coldThreshold: 0.5
+  maxColdDrainMultiplier: 2
+  maxFearDrainMultiplier: 1.75
   states:
   - state: 4
     minFlame: 75

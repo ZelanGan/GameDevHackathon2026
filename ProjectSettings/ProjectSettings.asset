@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 30
-  productGUID: 991910108ccd9ef4dbc1239f8d4e8289
+  productGUID: ed093865c18de004383e6a76d6be5bd9
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: Candlewick
+  productName: Night Trolleybus
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -613,14 +613,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: Candlewick
+  metroPackageName: Night Trolleybus
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: Candlewick
+  metroApplicationDescription: Night Trolleybus
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -691,10 +691,10 @@ PlayerSettings:
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: 54d6550f-6ab8-4b20-bc07-acc54af8c2a7
+  cloudProjectId: ecb820af-0f9f-4b20-b1d5-bfa5fa4262bd
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Candlewick
+  projectName: Night Trolleybus
   organizationId: povzunkirill
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0

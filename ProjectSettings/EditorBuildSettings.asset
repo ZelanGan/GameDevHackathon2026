@@ -6,8 +6,23 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 8c9cfa26abfee488c85f1582747f6a02
+    path: Assets/_Project/Scenes/Boot.unity
+    guid: 2da7a57ba4d6fd94d897a6ce33c36828
+  - enabled: 1
+    path: Assets/_Project/Scenes/RouteMap.unity
+    guid: d55c603af82948743a7d7b9ff58fe7bc
+  - enabled: 1
+    path: Assets/_Project/Scenes/Bus.unity
+    guid: 6d69b0a19a6ceb6468f59fcba5c48b85
+  - enabled: 1
+    path: Assets/_Project/Scenes/Stops/Stop_Depot.unity
+    guid: 8ae912c3955d55f4b89356e8376c9de2
+  - enabled: 1
+    path: Assets/_Project/Scenes/Stops/Stop_Market.unity
+    guid: 0c0c1c106d6bd9c4aacbcab15a2a1636
+  - enabled: 1
+    path: Assets/_Project/Scenes/Stops/Stop_GunShop.unity
+    guid: 88b4ec9102655204dbe1a0d3dae9fb21
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

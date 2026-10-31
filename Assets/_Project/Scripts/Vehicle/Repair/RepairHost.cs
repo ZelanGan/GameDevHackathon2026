@@ -70,7 +70,7 @@ namespace NightTrolleybus.Vehicle.Repair
                 return;
             }
 
-            repairTextChanged.Raise($"{minigame.Text}\nEsc: відійти");
+            repairTextChanged.Raise(Loc.F("{0}\nEsc: відійти", minigame.Text));
         }
 
         private void OnDestroy() => repairTextChanged.Raise(string.Empty);

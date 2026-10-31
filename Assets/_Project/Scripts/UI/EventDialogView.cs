@@ -27,16 +27,16 @@ namespace NightTrolleybus.UI
         public void ShowEvent(RoadEventData roadEvent, Func<RoadEventChoice, bool> canChoose, Action<RoadEventChoice> onChoice)
         {
             panel.SetActive(true);
-            titleLabel.text = roadEvent.Title;
-            bodyLabel.text = roadEvent.Description;
+            titleLabel.text = Loc.T(roadEvent.Title);
+            bodyLabel.text = Loc.T(roadEvent.Description);
             ClearButtons();
 
             foreach (RoadEventChoice choice in roadEvent.Choices)
             {
                 bool available = canChoose(choice);
                 string text = available || choice.requiredItem == null
-                    ? choice.text
-                    : $"{choice.text} (потрібно: {choice.requiredItem.DisplayName})";
+                    ? Loc.T(choice.text)
+                    : Loc.F("{0} (потрібно: {1})", Loc.T(choice.text), choice.requiredItem.DisplayName);
                 RoadEventChoice captured = choice;
                 AddButton(text, available, () => onChoice(captured));
             }
@@ -44,9 +44,9 @@ namespace NightTrolleybus.UI
 
         public void ShowOutcome(string outcome, Action onClosed)
         {
-            bodyLabel.text = outcome;
+            bodyLabel.text = Loc.T(outcome);
             ClearButtons();
-            AddButton("Далі", true, () => onClosed());
+            AddButton(Loc.T("Далі"), true, () => onClosed());
         }
 
         public void Hide()

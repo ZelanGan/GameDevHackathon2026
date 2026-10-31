@@ -35,6 +35,39 @@ namespace NightTrolleybus.EditorTools
             { "Flame_A", () => Flame(0) },
             { "Flame_B", () => Flame(1) },
             { "Flame_C", () => Flame(2) },
+            { "Flame_Candle", FlameCandle },
+            { "Flame_Bowl", FlameBowl },
+            { "Key_E", KeyE },
+            { "UI_Frame", () => UiFrame(C(150, 112, 70), C(18, 15, 16)) },
+            { "UI_Paper", () => UiFrame(C(120, 88, 56), C(232, 222, 190)) },
+            { "UI_IconFlame", UiIconFlame },
+            { "UI_IconHeat", UiIconHeat },
+            { "UI_IconPower", UiIconPower },
+            { "UI_IconFear", UiIconFear },
+            { "UI_IconHealth", UiIconHealth },
+            { "UI_Arrow", UiArrow },
+            { "UI_Trolley", UiTrolley },
+            { "UI_StopMark", UiStopMark },
+            { "UI_Dial", UiDial },
+            { "Top_Barrel", TopBarrel },
+            { "Top_Spool", TopSpool },
+            { "Top_Tires", TopTires },
+            { "Top_Workbench", TopWorkbench },
+            { "Top_Cart", TopCart },
+            { "Top_BoxPile", TopBoxPile },
+            { "Top_Checkout", TopCheckout },
+            { "Top_Shelf", TopShelf },
+            { "Top_AmmoBox", TopAmmoBox },
+            { "Top_Target", TopTarget },
+            { "Top_GunRack", TopGunRack },
+            { "Decal_Oil", () => Stain(40, 30, new Color(0.03f, 0.03f, 0.04f, 0.6f)) },
+            { "Decal_Spill", () => Stain(36, 28, new Color(0.45f, 0.5f, 0.2f, 0.45f)) },
+            { "Decal_Dust", () => Stain(44, 36, new Color(0f, 0f, 0f, 0.18f)) },
+            { "Decal_Crack", DecalCrack },
+            { "Decal_Cable", DecalCable },
+            { "Decal_Paper", DecalPaper },
+            { "Decal_Can", DecalCan },
+            { "Decal_Shells", DecalShells },
             { "Item_candle", Candle },
             { "Item_match", Match },
             { "Item_battery", Battery },
@@ -45,7 +78,12 @@ namespace NightTrolleybus.EditorTools
             { "BusEnd", () => Hull(32, 192, C(78, 74, 72), false) },
             { "Seat", Seat },
             { "DriverSeat", DriverSeat },
-            { "Heater", Heater },
+            { "Heater_Off", () => Heater(0) },
+            { "Heater_On_A", () => Heater(1) },
+            { "Heater_On_B", () => Heater(2) },
+            { "DoorLever_Open", DoorLeverOpen },
+            { "CabinDoor_Closed", CabinDoorClosed },
+            { "CabinDoor_Open", CabinDoorOpen },
             { "Switch", Switch },
             { "DoorLever", DoorLever },
             { "ExitDoor", ExitDoor },
@@ -66,6 +104,9 @@ namespace NightTrolleybus.EditorTools
             { "Top_Player_Idle", () => TopPerson(0) },
             { "Top_Player_Walk_A", () => TopPerson(1) },
             { "Top_Player_Walk_B", () => TopPerson(-1) },
+            { "Top_Player_Back_Idle", () => TopPersonBack(0) },
+            { "Top_Player_Back_Walk_A", () => TopPersonBack(1) },
+            { "Top_Player_Back_Walk_B", () => TopPersonBack(-1) },
             { "Top_Shade_A", () => TopShade(0) },
             { "Top_Shade_B", () => TopShade(1) },
             { "Top_Floor", TopFloor },
@@ -89,6 +130,8 @@ namespace NightTrolleybus.EditorTools
 
                 var importer = (TextureImporter)AssetImporter.GetAtPath(path);
                 importer.textureType = TextureImporterType.Sprite;
+                // Інакше Unity може нарізати малюнок на частини й обрізати його.
+                importer.spriteImportMode = SpriteImportMode.Single;
                 importer.spritePixelsPerUnit = PixelsPerUnit;
                 importer.filterMode = FilterMode.Point;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
@@ -101,6 +144,20 @@ namespace NightTrolleybus.EditorTools
             }
 
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        /// <summary>Спрайт для рамки, що розтягується: кути лишаються незмінними.</summary>
+        public static Sprite GetSliced(string spriteName, int border)
+        {
+            Sprite sprite = Get(spriteName);
+            var importer = (TextureImporter)AssetImporter.GetAtPath($"{Folder}/{spriteName}.png");
+            var wanted = new Vector4(border, border, border, border);
+            if (importer.spriteBorder == wanted)
+                return sprite;
+
+            importer.spriteBorder = wanted;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Sprite>($"{Folder}/{spriteName}.png");
         }
 
         private static Color C(int r, int g, int b) => new Color(r / 255f, g / 255f, b / 255f);
@@ -299,15 +356,75 @@ namespace NightTrolleybus.EditorTools
             return c;
         }
 
-        private static Canvas Heater()
+        // Кадр 0: піч холодна, сірі ґрати й згаслий вогник. Кадри 1 і 2: розпечені ґрати й полум'я, що ворушиться.
+        private static Canvas Heater(int frame)
         {
+            bool isOn = frame > 0;
             var c = new Canvas(38, 32);
-            c.Rect(0, 0, 38, 32, C(146, 86, 42));
-            c.Rect(2, 2, 34, 28, C(70, 40, 26));
+            c.Rect(0, 0, 38, 32, isOn ? C(146, 86, 42) : C(84, 78, 76));
+            c.Rect(2, 2, 34, 28, isOn ? C(70, 30, 18) : C(30, 28, 30));
+            if (isOn)
+            {
+                for (int x = 4; x < 34; x += 5)
+                {
+                    int height = 8 + (x + frame * 3) % 7;
+                    c.Rect(x, 4, 4, height, C(240, 120, 36));
+                    c.Rect(x + 1, 4, 2, height / 2 + 1, C(255, 220, 110));
+                }
+            }
+
+            Color bars = isOn ? C(255, 170, 70) : C(64, 62, 66);
             for (int x = 4; x < 34; x += 5)
-                c.Rect(x, 6, 3, 18, C(214, 100, 40));
+                c.Rect(x + 3, 4, 1, 20, bars);
+
             c.Rect(0, 27, 38, 5, MetalDark);
-            c.Rect(30, 28, 3, 3, C(240, 220, 90));
+            c.Rect(30, 28, 3, 3, isOn ? C(255, 80, 50) : C(50, 44, 44));
+            return c;
+        }
+
+        private static Canvas DoorLeverOpen()
+        {
+            var c = new Canvas(16, 26);
+            c.Rect(0, 0, 16, 26, MetalDark);
+            c.Rect(2, 2, 12, 22, C(70, 122, 110));
+            c.Rect(7, 6, 2, 14, Boots);
+            c.Rect(5, 5, 6, 3, C(120, 220, 170));
+            return c;
+        }
+
+        private static Canvas CabinDoorClosed()
+        {
+            Color frame = C(58, 52, 54);
+            Color panel = C(120, 44, 40);
+            Color glass = C(32, 40, 58);
+            var c = new Canvas(30, 56);
+            c.Rect(0, 0, 30, 56, frame);
+            c.Rect(2, 0, 12, 54, panel);
+            c.Rect(16, 0, 12, 54, panel);
+            c.Rect(4, 24, 8, 26, glass);
+            c.Rect(18, 24, 8, 26, glass);
+            c.Rect(14, 0, 2, 54, C(20, 18, 20));
+            c.Rect(11, 16, 2, 5, Metal);
+            c.Rect(17, 16, 2, 5, Metal);
+            return c;
+        }
+
+        // Стулки складені до країв, а в прорізі видно ніч і мокру дорогу.
+        private static Canvas CabinDoorOpen()
+        {
+            Color frame = C(58, 52, 54);
+            var c = new Canvas(30, 56);
+            c.Rect(0, 0, 30, 56, frame);
+            c.Rect(2, 0, 26, 54, C(10, 14, 30));
+            c.Rect(2, 0, 26, 9, C(26, 26, 32));
+            c.Rect(5, 4, 10, 1, C(70, 68, 66));
+            c.Rect(7, 40, 1, 1, C(190, 190, 220));
+            c.Rect(19, 47, 1, 1, C(190, 190, 220));
+            c.Rect(13, 30, 1, 1, C(120, 120, 150));
+            c.Rect(2, 0, 3, 54, C(120, 44, 40));
+            c.Rect(25, 0, 3, 54, C(120, 44, 40));
+            c.Rect(3, 24, 1, 26, C(32, 40, 58));
+            c.Rect(26, 24, 1, 26, C(32, 40, 58));
             return c;
         }
 
@@ -562,16 +679,421 @@ namespace NightTrolleybus.EditorTools
         // Вид зверху: персонаж дивиться вправо, а в грі спрайт обертається за поглядом.
         private static Canvas TopPerson(int step)
         {
+            // Той самий водій, що в салоні, але стиснутий по висоті: згори видно кашкет і плечі, а ноги короткі.
+            var c = new Canvas(26, 36);
+            TopLegs(c, step);
+            c.Rect(5, 8, 16, 13, Coat);
+            c.Rect(5, 8, 3, 13, CoatDark);
+            c.Rect(12, 9, 2, 12, CoatDark);
+            c.Rect(5, 8, 16, 1, Boots);
+            c.Rect(5, 19, 16, 2, C(78, 106, 156));
+            c.Rect(2, 11, 3, 9, CoatDark);
+            c.Rect(21, 11, 3, 9, Coat);
+            c.Rect(2, 9, 3, 2, Skin);
+            c.Rect(21, 9, 3, 2, Skin);
+            c.Rect(8, 21, 11, 5, Skin);
+            c.Rect(14, 23, 2, 1, Boots);
+            c.Rect(17, 23, 1, 1, Boots);
+            c.Rect(15, 25, 7, 1, Boots);
+            c.Rect(7, 26, 13, 4, Cap);
+            c.Rect(8, 30, 11, 2, C(50, 62, 94));
+            return c;
+        }
+
+        // Водій спиною: без обличчя й козирка, а пальто суцільне.
+        private static Canvas TopPersonBack(int step)
+        {
+            var c = new Canvas(26, 36);
+            TopLegs(c, step);
+            c.Rect(5, 8, 16, 13, Coat);
+            c.Rect(5, 8, 3, 13, CoatDark);
+            c.Rect(18, 8, 3, 13, CoatDark);
+            c.Rect(5, 8, 16, 1, Boots);
+            c.Rect(5, 19, 16, 2, C(78, 106, 156));
+            c.Rect(2, 11, 3, 9, CoatDark);
+            c.Rect(21, 11, 3, 9, CoatDark);
+            c.Rect(2, 9, 3, 2, Skin);
+            c.Rect(21, 9, 3, 2, Skin);
+            c.Rect(8, 21, 11, 5, Skin);
+            c.Rect(8, 24, 11, 2, C(52, 38, 30));
+            c.Rect(7, 26, 13, 4, Cap);
+            c.Rect(8, 30, 11, 2, C(50, 62, 94));
+            return c;
+        }
+
+        private static void TopLegs(Canvas c, int step)
+        {
+            int leftLeg = step == 1 ? 3 : step == -1 ? 1 : 2;
+            int rightLeg = step == -1 ? 3 : step == 1 ? 1 : 2;
+            c.Ellipse(13, 3, 9, 3, new Color(0f, 0f, 0f, 0.35f));
+            c.Rect(8, leftLeg, 4, 9 - leftLeg, Trousers);
+            c.Rect(14, rightLeg, 4, 9 - rightLeg, Trousers);
+            c.Rect(7, leftLeg, 5, 2, Boots);
+            c.Rect(14, rightLeg, 5, 2, Boots);
+        }
+
+        private static Canvas FlameCandle()
+        {
+            var c = new Canvas(16, 10);
+            c.Rect(5, 0, 6, 8, C(253, 231, 205));
+            c.Rect(4, 8, 9, 2, C(252, 229, 206));
+            return c;
+        }
+
+        private static Canvas TopBarrel()
+        {
+            var c = new Canvas(26, 26);
+            c.Ellipse(13, 13, 12, 12, C(70, 62, 52));
+            c.Ellipse(13, 13, 10, 10, C(112, 72, 44));
+            c.Ellipse(13, 13, 6, 6, C(84, 54, 34));
+            c.Rect(16, 15, 3, 3, C(150, 104, 62));
+            return c;
+        }
+
+        private static Canvas TopSpool()
+        {
             var c = new Canvas(28, 28);
-            c.Rect(16 + step * 3, 21, 7, 4, Skin);
-            c.Rect(16 - step * 3, 3, 7, 4, Skin);
-            c.Rect(9 + step * 2, 19, 10, 5, CoatDark);
-            c.Rect(9 - step * 2, 4, 10, 5, CoatDark);
-            c.Ellipse(13, 14, 8, 11, Coat);
-            c.Ellipse(11, 14, 3, 8, CoatDark);
-            c.Ellipse(15, 14, 6, 6, Cap);
-            c.Rect(20, 11, 3, 6, Boots);
-            c.Rect(14, 13, 3, 2, C(70, 90, 130));
+            c.Ellipse(14, 14, 13, 13, Wood);
+            c.Ellipse(14, 14, 10, 10, C(170, 96, 46));
+            c.Ellipse(14, 14, 8, 8, C(132, 72, 36));
+            c.Ellipse(14, 14, 3, 3, WoodDark);
+            return c;
+        }
+
+        private static Canvas TopTires()
+        {
+            var c = new Canvas(30, 30);
+            foreach ((int x, int y) in new[] { (10, 10), (20, 19) })
+            {
+                c.Ellipse(x, y, 9, 9, C(30, 30, 34));
+                c.Ellipse(x, y, 7, 7, C(50, 50, 56));
+                c.Ellipse(x, y, 3, 3, C(14, 14, 16));
+            }
+
+            return c;
+        }
+
+        private static Canvas TopWorkbench()
+        {
+            var c = new Canvas(56, 28);
+            c.Rect(0, 0, 56, 28, WoodDark);
+            c.Rect(2, 2, 52, 24, Wood);
+            c.Rect(8, 16, 14, 4, Metal);
+            c.Rect(12, 8, 3, 12, MetalDark);
+            c.Rect(32, 8, 12, 10, C(120, 44, 36));
+            c.Rect(34, 12, 8, 2, Metal);
+            return c;
+        }
+
+        private static Canvas TopCart()
+        {
+            var c = new Canvas(34, 24);
+            c.Rect(0, 8, 6, 3, MetalDark);
+            c.Rect(5, 1, 28, 22, MetalDark);
+            c.Rect(7, 3, 24, 18, C(38, 40, 46));
+            for (int x = 11; x < 31; x += 5)
+                c.Rect(x, 3, 1, 18, Metal);
+            for (int y = 7; y < 21; y += 5)
+                c.Rect(7, y, 24, 1, Metal);
+            c.Rect(16, 6, 9, 7, C(150, 92, 54));
+            return c;
+        }
+
+        private static Canvas TopBoxPile()
+        {
+            var c = new Canvas(40, 32);
+            Color tape = C(204, 180, 128);
+            foreach ((int x, int y, int w, int h) in new[] { (0, 0, 22, 18), (20, 3, 20, 16), (9, 15, 20, 17) })
+            {
+                c.Rect(x, y, w, h, C(112, 78, 46));
+                c.Rect(x + 1, y + 1, w - 2, h - 2, C(158, 114, 70));
+                c.Rect(x + w / 2 - 1, y + 1, 3, h - 2, tape);
+            }
+
+            return c;
+        }
+
+        private static Canvas TopCheckout()
+        {
+            var c = new Canvas(60, 26);
+            c.Rect(0, 0, 60, 26, C(60, 60, 70));
+            c.Rect(2, 2, 56, 22, C(96, 100, 112));
+            c.Rect(4, 8, 34, 10, C(26, 26, 30));
+            for (int x = 8; x < 38; x += 6)
+                c.Rect(x, 8, 1, 10, C(58, 58, 64));
+            c.Rect(44, 7, 11, 12, C(40, 44, 54));
+            c.Rect(46, 12, 7, 5, C(120, 200, 150));
+            return c;
+        }
+
+        private static Canvas TopShelf()
+        {
+            var c = new Canvas(32, 32);
+            Color[] goods = { C(180, 70, 60), C(70, 130, 170), C(200, 170, 80), C(90, 150, 90) };
+            c.Rect(0, 0, 32, 32, C(70, 66, 74));
+            c.Rect(3, 0, 26, 32, C(110, 106, 114));
+            for (int y = 2; y < 32; y += 10)
+            {
+                c.Rect(6, y, 8, 7, goods[y % 4]);
+                c.Rect(18, y, 8, 7, goods[(y + 2) % 4]);
+            }
+
+            return c;
+        }
+
+        private static Canvas TopAmmoBox()
+        {
+            var c = new Canvas(28, 20);
+            c.Rect(0, 0, 28, 20, C(44, 56, 38));
+            c.Rect(2, 2, 24, 16, C(78, 96, 62));
+            c.Rect(2, 9, 24, 2, C(44, 56, 38));
+            c.Rect(11, 5, 6, 10, C(196, 170, 84));
+            return c;
+        }
+
+        private static Canvas TopTarget()
+        {
+            var c = new Canvas(28, 28);
+            c.Ellipse(14, 14, 13, 13, C(226, 220, 204));
+            c.Ellipse(14, 14, 10, 10, C(170, 50, 42));
+            c.Ellipse(14, 14, 7, 7, C(226, 220, 204));
+            c.Ellipse(14, 14, 3, 3, C(170, 50, 42));
+            return c;
+        }
+
+        private static Canvas TopGunRack()
+        {
+            var c = new Canvas(60, 18);
+            c.Rect(0, 0, 60, 18, WoodDark);
+            c.Rect(2, 2, 56, 14, Wood);
+            for (int x = 6; x < 54; x += 12)
+            {
+                c.Rect(x, 4, 3, 10, C(40, 40, 46));
+                c.Rect(x - 1, 4, 5, 3, C(92, 62, 38));
+            }
+
+            return c;
+        }
+
+        private static Canvas Stain(int width, int height, Color color)
+        {
+            var c = new Canvas(width, height);
+            c.Ellipse(width / 2, height / 2, width / 2 - 4, height / 2 - 4, color);
+            c.Ellipse(width / 3, height / 3, width / 5, height / 5, color);
+            c.Ellipse(width * 2 / 3, height * 2 / 3, width / 6, height / 6, color);
+            return c;
+        }
+
+        private static Canvas DecalCrack()
+        {
+            var c = new Canvas(40, 40);
+            Color crack = new Color(0f, 0f, 0f, 0.55f);
+            int y = 4;
+            for (int x = 3; x < 37; x += 3)
+            {
+                c.Rect(x, y, 3, 1, crack);
+                c.Rect(x + 2, y, 1, 3, crack);
+                y += x % 2 == 0 ? 4 : 2;
+            }
+
+            c.Rect(20, 8, 1, 10, crack);
+            c.Rect(20, 8, 8, 1, crack);
+            return c;
+        }
+
+        private static Canvas DecalCable()
+        {
+            var c = new Canvas(48, 12);
+            for (int x = 0; x < 48; x += 4)
+                c.Rect(x, 5 + (x / 4 % 3 == 0 ? 2 : x / 4 % 3 == 1 ? 0 : -2), 5, 2, C(22, 22, 26));
+            c.Rect(44, 3, 4, 6, C(180, 120, 50));
+            return c;
+        }
+
+        private static Canvas DecalPaper()
+        {
+            var c = new Canvas(16, 14);
+            Color line = C(130, 126, 116);
+            c.Rect(1, 1, 14, 12, C(198, 192, 176));
+            c.Rect(3, 9, 10, 1, line);
+            c.Rect(3, 6, 8, 1, line);
+            c.Rect(3, 3, 9, 1, line);
+            return c;
+        }
+
+        private static Canvas DecalCan()
+        {
+            var c = new Canvas(14, 10);
+            c.Rect(1, 2, 10, 6, C(170, 60, 54));
+            c.Rect(3, 4, 6, 2, C(222, 214, 196));
+            c.Rect(11, 3, 2, 4, Metal);
+            return c;
+        }
+
+        private static Canvas DecalShells()
+        {
+            var c = new Canvas(20, 20);
+            Color brass = C(206, 168, 76);
+            foreach ((int x, int y) in new[] { (3, 4), (8, 12), (13, 6), (15, 15), (6, 17) })
+                c.Rect(x, y, 3, 2, brass);
+            return c;
+        }
+
+        // Рамка 12 на 12 з обрізаними кутами: чорний контур, кольорова смуга й заливка всередині.
+        private static Canvas UiFrame(Color edge, Color inner)
+        {
+            var c = new Canvas(12, 12);
+            c.Rect(1, 0, 10, 12, C(10, 8, 8));
+            c.Rect(0, 1, 12, 10, C(10, 8, 8));
+            c.Rect(1, 1, 10, 10, edge);
+            c.Rect(2, 2, 8, 8, inner);
+            return c;
+        }
+
+        private static Canvas UiIconFlame()
+        {
+            var c = new Canvas(16, 16);
+            c.Ellipse(8, 5, 5, 5, C(240, 130, 40));
+            c.Rect(6, 9, 5, 3, C(240, 130, 40));
+            c.Rect(7, 12, 3, 3, C(240, 130, 40));
+            c.Ellipse(8, 4, 3, 3, C(255, 220, 110));
+            return c;
+        }
+
+        private static Canvas UiIconHeat()
+        {
+            var c = new Canvas(16, 16);
+            Color glass = C(220, 226, 236);
+            c.Rect(6, 5, 4, 10, glass);
+            c.Ellipse(8, 4, 4, 4, glass);
+            c.Rect(7, 5, 2, 8, C(90, 170, 240));
+            c.Ellipse(8, 4, 2, 2, C(90, 170, 240));
+            return c;
+        }
+
+        private static Canvas UiIconPower()
+        {
+            var c = new Canvas(16, 16);
+            Color bolt = C(255, 216, 70);
+            c.Rect(8, 11, 4, 4, bolt);
+            c.Rect(6, 8, 5, 3, bolt);
+            c.Rect(4, 6, 8, 2, bolt);
+            c.Rect(6, 3, 4, 3, bolt);
+            c.Rect(5, 0, 3, 3, bolt);
+            return c;
+        }
+
+        private static Canvas UiIconFear()
+        {
+            var c = new Canvas(16, 16);
+            c.Ellipse(8, 8, 7, 5, C(214, 196, 232));
+            c.Ellipse(8, 8, 3, 3, C(120, 60, 170));
+            c.Ellipse(8, 8, 1, 1, C(20, 10, 30));
+            return c;
+        }
+
+        private static Canvas UiIconHealth()
+        {
+            var c = new Canvas(16, 16);
+            Color heart = C(220, 60, 60);
+            c.Ellipse(5, 10, 3, 3, heart);
+            c.Ellipse(11, 10, 3, 3, heart);
+            c.Rect(3, 6, 10, 4, heart);
+            c.Rect(5, 3, 6, 3, heart);
+            c.Rect(7, 1, 2, 2, heart);
+            return c;
+        }
+
+        private static Canvas UiArrow()
+        {
+            var c = new Canvas(9, 8);
+            Color arrow = Color.white;
+            c.Rect(3, 0, 3, 4, arrow);
+            c.Rect(1, 3, 7, 2, arrow);
+            c.Rect(2, 5, 5, 1, arrow);
+            c.Rect(3, 6, 3, 1, arrow);
+            c.Rect(4, 7, 1, 1, arrow);
+            return c;
+        }
+
+        private static Canvas UiTrolley()
+        {
+            var c = new Canvas(24, 12);
+            c.Rect(1, 2, 22, 7, C(170, 44, 40));
+            c.Rect(1, 5, 22, 1, C(226, 190, 110));
+            c.Rect(3, 6, 4, 3, C(190, 220, 240));
+            c.Rect(9, 6, 4, 3, C(190, 220, 240));
+            c.Rect(15, 6, 4, 3, C(190, 220, 240));
+            c.Ellipse(6, 2, 2, 2, C(26, 26, 30));
+            c.Ellipse(18, 2, 2, 2, C(26, 26, 30));
+            c.Rect(8, 9, 1, 3, Metal);
+            c.Rect(14, 9, 1, 3, Metal);
+            return c;
+        }
+
+        private static Canvas UiStopMark()
+        {
+            var c = new Canvas(12, 12);
+            c.Ellipse(6, 6, 5, 5, C(26, 22, 22));
+            c.Ellipse(6, 6, 4, 4, C(240, 200, 110));
+            c.Ellipse(6, 6, 2, 2, C(26, 22, 22));
+            return c;
+        }
+
+        private static Canvas UiDial()
+        {
+            const int size = 48;
+            const int center = size / 2;
+            var c = new Canvas(size, size);
+            c.Ellipse(center, center, 23, 23, C(10, 8, 8));
+            c.Ellipse(center, center, 22, 22, C(150, 112, 70));
+            c.Ellipse(center, center, 20, 20, C(18, 15, 16));
+
+            // Шкала йде за годинниковою стрілкою від -120° до +120° відносно верху й червоніє до кінця.
+            for (float t = 0f; t <= 1f; t += 0.01f)
+            {
+                float angle = (120f - t * 240f + 90f) * Mathf.Deg2Rad;
+                Color color = Color.Lerp(C(90, 190, 100), Color.Lerp(C(235, 190, 70), C(220, 60, 50), t), t);
+                for (int radius = 16; radius <= 18; radius++)
+                    c.Set(center + Mathf.RoundToInt(Mathf.Cos(angle) * radius), center + Mathf.RoundToInt(Mathf.Sin(angle) * radius), color);
+            }
+
+            for (int tick = 0; tick <= 6; tick++)
+            {
+                float angle = (120f - tick * 40f + 90f) * Mathf.Deg2Rad;
+                c.Set(center + Mathf.RoundToInt(Mathf.Cos(angle) * 14f), center + Mathf.RoundToInt(Mathf.Sin(angle) * 14f), C(240, 230, 210));
+            }
+
+            c.Ellipse(center, center, 2, 2, C(200, 190, 170));
+            return c;
+        }
+
+        private static Canvas KeyE()
+        {
+            Color frame = C(30, 26, 30);
+            Color key = C(240, 228, 200);
+            var c = new Canvas(13, 13);
+            c.Rect(1, 0, 11, 13, frame);
+            c.Rect(0, 1, 13, 11, frame);
+            c.Rect(1, 2, 11, 10, key);
+            c.Rect(1, 1, 11, 1, C(170, 156, 130));
+            c.Rect(4, 3, 2, 7, frame);
+            c.Rect(6, 3, 3, 1, frame);
+            c.Rect(6, 6, 2, 1, frame);
+            c.Rect(6, 9, 3, 1, frame);
+            return c;
+        }
+
+        private static Canvas FlameBowl()
+        {
+            Color body = C(120, 104, 90);
+            Color shade = C(84, 72, 62);
+            var c = new Canvas(14, 6);
+            c.Rect(0, 5, 14, 1, C(158, 140, 120));
+            c.Rect(1, 2, 12, 3, body);
+            c.Rect(1, 2, 3, 3, shade);
+            c.Rect(3, 1, 8, 1, shade);
+            c.Rect(4, 0, 6, 1, shade);
             return c;
         }
 

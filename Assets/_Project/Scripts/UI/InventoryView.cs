@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace NightTrolleybus.UI
 {
-    /// <summary>Панель інвентаря: клітинки з предметами, опис і кнопка «Використати».</summary>
+    /// <summary>Панель інвентаря: клітинки з предметами й назва вибраного.</summary>
     public class InventoryView : MonoBehaviour
     {
         private const float SlotSize = 76f;
@@ -14,23 +14,21 @@ namespace NightTrolleybus.UI
         private const float SelectedScale = 1.18f;
         private const float SelectedLift = 8f;
 
-        private static readonly Color SlotColor = new Color(0.08f, 0.07f, 0.09f, 0.85f);
-        private static readonly Color SlotHover = new Color(0.32f, 0.24f, 0.16f, 0.95f);
-        private static readonly Color SlotSelected = new Color(0.95f, 0.62f, 0.25f, 1f);
+        // Рамка кольорова сама, тому ці кольори лише підфарбовують її.
+        private static readonly Color SlotColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+        private static readonly Color SlotHover = new Color(1f, 0.95f, 0.8f, 1f);
+        private static readonly Color SlotSelected = new Color(1f, 0.75f, 0.3f, 1f);
         private static readonly Color Warm = new Color(1f, 0.85f, 0.5f);
 
         [SerializeField] private Inventory inventory;
         [SerializeField] private VoidEventChannel inventoryChanged;
         [SerializeField] private RectTransform panel;
-        [SerializeField] private Sprite square;
+        [SerializeField] private Sprite frame;
         [SerializeField] private Font font;
 
         private Image[] slotFrames;
         private Image[] slotIcons;
         private Text titleLabel;
-        private Text descriptionLabel;
-        private Button useButton;
-        private Text useLabel;
         private int hoveredIndex = -1;
 
         private void Awake() => Build();
@@ -86,24 +84,13 @@ namespace NightTrolleybus.UI
 
             if (count == 0)
             {
-                titleLabel.text = $"Інвентар порожній (0/{inventory.Capacity})";
-                descriptionLabel.text = "Предмети підбираються дотиком. Вибір: колесо миші, Tab або 1-6";
-                useButton.interactable = false;
-                useLabel.text = "Немає що використати";
+                titleLabel.text = string.Empty;
                 return;
             }
 
-            ItemData selected = inventory.Items[inventory.SelectedIndex];
-            titleLabel.text = $"Вибрано: {selected.DisplayName}";
-
-            // Опис під курсором не замінює вибраний предмет, а лише підказує про іншу клітинку.
+            // Під курсором видно назву іншої клітинки, інакше вибраний предмет, який витратить Q.
             bool peeksOther = hoveredIndex >= 0 && hoveredIndex < count && hoveredIndex != inventory.SelectedIndex;
-            descriptionLabel.text = peeksOther
-                ? $"Клітинка {hoveredIndex + 1}: {inventory.Items[hoveredIndex].DisplayName} — {inventory.Items[hoveredIndex].Description}"
-                : $"{selected.Description}   |   Вибір: колесо миші, Tab або 1-6";
-
-            useButton.interactable = selected.IsUsable;
-            useLabel.text = selected.IsUsable ? $"Q — використати: {selected.DisplayName}" : "Цей предмет лише для обміну";
+            titleLabel.text = inventory.Items[peeksOther ? hoveredIndex : inventory.SelectedIndex].DisplayName;
         }
 
         private void Build()
@@ -114,84 +101,46 @@ namespace NightTrolleybus.UI
             panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0f);
             panel.pivot = new Vector2(0.5f, 0f);
             panel.anchoredPosition = new Vector2(0f, 20f);
-            panel.sizeDelta = new Vector2(rowWidth, SlotSize + 148f);
+            panel.sizeDelta = new Vector2(rowWidth, SlotSize + 48f);
 
             slotFrames = new Image[capacity];
             slotIcons = new Image[capacity];
             for (int i = 0; i < capacity; i++)
                 BuildSlot(i);
 
-            titleLabel = CreateText("Title", 28, FontStyle.Bold, Warm, 118f, 36f);
-            descriptionLabel = CreateText("Description", 22, FontStyle.Normal, Color.white, 88f, 30f);
-
-            var image = new GameObject("UseButton").AddComponent<Image>();
-            image.transform.SetParent(panel, false);
-            image.sprite = square;
-            image.color = Color.white;
-            PlaceRow(image.rectTransform, SlotSize + 38f, 44f, 0.7f);
-
-            useButton = image.gameObject.AddComponent<Button>();
-            ColorBlock colors = useButton.colors;
-            colors.normalColor = new Color(0.72f, 0.42f, 0.14f, 0.95f);
-            colors.highlightedColor = SlotSelected;
-            colors.selectedColor = colors.normalColor;
-            colors.pressedColor = new Color(1f, 0.8f, 0.45f);
-            colors.disabledColor = new Color(0.14f, 0.14f, 0.14f, 0.8f);
-            useButton.colors = colors;
-            useButton.onClick.AddListener(inventory.UseSelected);
-
-            useLabel = new GameObject("Label").AddComponent<Text>();
-            useLabel.transform.SetParent(image.transform, false);
-            useLabel.font = font;
-            useLabel.fontSize = 22;
-            useLabel.alignment = TextAnchor.MiddleCenter;
-            useLabel.color = Color.white;
-            useLabel.raycastTarget = false;
-            RectTransform labelRect = useLabel.rectTransform;
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-
-            AddOutline(useLabel);
+            titleLabel = CreateText("Title", 28, FontStyle.Bold, Warm, 10f, 36f);
         }
 
         private void BuildSlot(int index)
         {
-            var frame = new GameObject($"Slot_{index}").AddComponent<Image>();
-            frame.transform.SetParent(panel, false);
-            frame.sprite = square;
-            frame.color = SlotColor;
-            RectTransform frameRect = frame.rectTransform;
+            var slotFrame = new GameObject($"Slot_{index}").AddComponent<Image>();
+            slotFrame.transform.SetParent(panel, false);
+            slotFrame.sprite = frame;
+            slotFrame.type = Image.Type.Sliced;
+            slotFrame.color = SlotColor;
+            RectTransform frameRect = slotFrame.rectTransform;
             frameRect.anchorMin = frameRect.anchorMax = Vector2.zero;
             frameRect.pivot = Vector2.zero;
             frameRect.sizeDelta = new Vector2(SlotSize, SlotSize);
             frameRect.anchoredPosition = new Vector2(index * (SlotSize + SlotSpacing), 0f);
 
-            var inner = new GameObject("Inner").AddComponent<Image>();
-            inner.transform.SetParent(frame.transform, false);
-            inner.sprite = square;
-            inner.color = new Color(0.03f, 0.03f, 0.05f, 0.95f);
-            inner.raycastTarget = false;
-            Inset(inner.rectTransform, 5f);
-
             var icon = new GameObject("Icon").AddComponent<Image>();
-            icon.transform.SetParent(frame.transform, false);
+            icon.transform.SetParent(slotFrame.transform, false);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             Inset(icon.rectTransform, 13f);
 
-            Text number = CreateSlotText("Number", frame.transform, (index + 1).ToString(), 18, Color.white);
+            Text number = CreateSlotText("Number", slotFrame.transform, (index + 1).ToString(), 18, Color.white);
             number.alignment = TextAnchor.UpperLeft;
             Inset(number.rectTransform, 7f);
 
-            var slot = frame.gameObject.AddComponent<InventorySlotView>();
+            var slot = slotFrame.gameObject.AddComponent<InventorySlotView>();
             slot.Index = index;
             slot.Hovered += OnSlotHovered;
             slot.Unhovered += OnSlotUnhovered;
             slot.Clicked += OnSlotClicked;
 
-            slotFrames[index] = frame;
+            slotFrames[index] = slotFrame;
             slotIcons[index] = icon;
         }
 

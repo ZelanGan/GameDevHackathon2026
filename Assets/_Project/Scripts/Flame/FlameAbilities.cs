@@ -76,7 +76,7 @@ namespace NightTrolleybus.Flame
             // Поза салоном гріти нічого, тому полум'я не витрачаємо.
             if (!canWarm || GameContext.Temperature == null)
             {
-                noticeRaised.Raise("Тут нічого зігрівати");
+                noticeRaised.Raise(Loc.T("Тут нічого зігрівати"));
                 return;
             }
 
@@ -101,7 +101,7 @@ namespace NightTrolleybus.Flame
             if (GameContext.Flame != null && GameContext.Flame.TrySpend(cost))
                 return true;
 
-            noticeRaised.Raise("Вогнику бракує сили");
+            noticeRaised.Raise(Loc.T("Вогнику бракує сили"));
             return false;
         }
     }

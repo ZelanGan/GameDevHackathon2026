@@ -1,0 +1,201 @@
+using System.Collections.Generic;
+
+namespace NightTrolleybus.Core
+{
+    /// <summary>Переклад ігрових текстів. Ключ це сам український текст, тож асети й код лишаються читабельними, а без перекладу видно оригінал.</summary>
+    public static class Loc
+    {
+        private static readonly Dictionary<string, string> English = new Dictionary<string, string>
+        {
+            // Мапа
+            { "Депо", "Depot" },
+            { "Супермаркет", "Supermarket" },
+            { "Магазин зброї", "Gun shop" },
+            { "Подія", "Event" },
+            { "Порожня дорога", "Empty road" },
+            { "Кінцева", "Last stop" },
+            { "+ енергія", "+ power" },
+            { "+ свічки", "+ candles" },
+            { "зброя за квитки", "weapons for tickets" },
+            { "вибір і наслідки", "choices and consequences" },
+            { "без зупинки", "no stop" },
+            { "фінал", "finale" },
+            { "зупинка", "stop" },
+
+            // Шкали
+            { "Вогник", "Flame" },
+            { "Тепло", "Heat" },
+            { "Енергія", "Power" },
+            { "Страх", "Fear" },
+            { "{0} км/год", "{0} km/h" },
+
+            // Цілі
+            { "Зупинка: {0}. Підійдіть до зелених дверей посеред салону й натисніть E", "Stop: {0}. Go to the green door in the middle of the cabin and press E" },
+            { "Ви на місці: {0}. Тримайте S, щоб зупинитися", "You have arrived: {0}. Hold S to stop" },
+            { "Ви на місці: {0}. Сядьте за кермо й зупиніть тролейбус клавішею S", "You have arrived: {0}. Take the wheel and stop the trolleybus with S" },
+            { "Штанги злетіли, тролейбус не їде. Підійдіть до червоної станції й натисніть E", "The poles came off and the trolleybus has stopped. Go to the red station and press E" },
+            { "Немає енергії! Застосуйте акумулятор (Q) або їдьте за кермом на W: аварійний хід повільний і палить Вогника", "No power! Use a battery (Q) or drive with W: emergency drive is slow and burns the Flame" },
+            { "Їдемо до: {0} ({1})", "Heading to: {0} ({1})" },
+            { "Тримайте W, щоб їхати до: {0} ({1})", "Hold W to drive to: {0} ({1})" },
+            { "Підійдіть до місця водія праворуч і натисніть E. Далі: {0} ({1})", "Go to the driver's seat on the right and press E. Next: {0} ({1})" },
+            { "Мало енергії! Їдьте в депо (зелений прямокутник): там зарядна станція", "Low power! Go to the depot (green box): it has a charging station" },
+            { "Мало енергії, а депо зараз недоступне. Вимкніть обігрівач і оберіть шлях до депо", "Low power and no depot within reach. Turn off the heater and choose a route to a depot" },
+            { "Спершу заряд: шафа із синім світлом поруч із входом (E). Потім предмети й назад до дверей ліворуч", "Charge first: the cabinet with the blue light near the entrance (E). Then find items and return to the door on the left" },
+            { "Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!", "Search the rooms for items. To leave, return to the door on the left and press E. The darkness is coming!" },
+            { "Оберіть, як вчинити", "Choose what to do" },
+
+            // Повідомлення
+            { "Інвентар заповнений", "Inventory is full" },
+            { "Отримано: {0}", "Received: {0}" },
+            { "{0}: це для обміну", "{0}: for trading only" },
+            { "Використано: {0} ({1})", "Used: {0} ({1})" },
+            { "Не використовується: це плата в магазині зброї", "Cannot be used: it is payment at the gun shop" },
+            { "+{0} до енергії тролейбуса", "+{0} trolleybus power" },
+            { "+{0} до сили Вогника", "+{0} Flame strength" },
+            { "{0} за {1} × {2}", "{0} for {1} × {2}" },
+            { "Бракує: {0}", "Not enough: {0}" },
+            { "Нова зброя: {0}", "New weapon: {0}" },
+            { "Ви впали. Вогник витратив силу, щоб повернути вас.", "You fell. The Flame spent its strength to bring you back." },
+            { "Зайшов пасажир: {0}", "A passenger boarded: {0}" },
+            { "Тут нічого зігрівати", "Nothing to warm here" },
+            { "Вогнику бракує сили", "The Flame is too weak" },
+            { "Тролейбус заряджено", "Trolleybus charged" },
+            { "Штанги злетіли з дротів!", "The poles came off the wires!" },
+            { "Згорів запобіжник!", "A fuse blew!" },
+            { "Роз'єдналися проводи, енергія витікає!", "Wires came loose, power is leaking!" },
+            { "Удар об сміття на дорозі!", "Hit debris on the road!" },
+            { "Лінія мерехтить, напруга просіла.", "The line flickers, voltage dropped." },
+            { "Темрява стукає у вікна...", "The darkness knocks on the windows..." },
+            { "Штанги злетіли. ", "Poles off. " },
+            { "Запобіжник згорів. ", "Fuse blown. " },
+            { "Витік енергії. ", "Power leak. " },
+            { "Вогник згас. Ніч лишилася назавжди.", "The Flame went out. The night stays forever." },
+            { "У головне меню", "To main menu" },
+
+            // Ремонт
+            { "Штанги: Пробіл, коли | на дроті #\n[{0}]\nПідключено: {1}/{2}", "Poles: Space when | is on wire #\n[{0}]\nConnected: {1}/{2}" },
+            { "Запобіжник: потрібен на {0} А\n1) {1} А   2) {2} А   3) {3} А", "Fuse: {0} A needed\n1) {1} A   2) {2} A   3) {3} A" },
+            { "\nІскра! Не той запобіжник.", "\nSparks! Wrong fuse." },
+            { "Проводи: з'єднайте по черзі\n{0}\nЗ'єднано: {1}/{2}", "Wires: connect in order\n{0}\nConnected: {1}/{2}" },
+            { "{0}\nEsc: відійти", "{0}\nEsc: step away" },
+
+            // Предмети, зброя, пасажири
+            { "Сірник", "Match" },
+            { "Свічка", "Candle" },
+            { "Акумулятор", "Battery" },
+            { "Старий квиток", "Old ticket" },
+            { "Обрізок труби", "Pipe" },
+            { "Лом", "Crowbar" },
+            { "Пожежна сокира", "Fire axe" },
+            { "Бабуся зі свічкою", "Old woman with a candle" },
+            { "Втомлений електрик", "Tired electrician" },
+            { "Мовчазний незнайомець", "Silent stranger" },
+            { "Тінь у пальті", "Shadow in a coat" },
+
+            // Події
+            { "{0} (потрібно: {1})", "{0} (needs: {1})" },
+            { "Далі", "Next" },
+            { "Нічний рейс", "Night route" },
+            { "Згасли ліхтарі. Потім вікна. Потім зорі.\nНаприкінці зміни ти помічаєш на сидінні крихітний живий вогник.\n«Довези мене до кінцевої, — шепоче він. — Там ще можна повернути світло. Тільки не дай мені згаснути».", "The street lamps went out. Then the windows. Then the stars.\nAt the end of your shift you notice a tiny living flame on a seat.\n\"Take me to the last stop,\" it whispers. \"The light can still be brought back there. Just don't let me go out.\"" },
+            { "Сідай ближче. Поїхали", "Sit closer. Let's go" },
+            { "Вогник тремтить і трохи яскравішає. Попереду ніч і ніякого розкладу.", "The Flame trembles and grows a little brighter. Ahead lie the night and no timetable." },
+            { "Стара кондукторка", "The old conductor" },
+            { "На порожній зупинці стоїть кондукторка в формі давно закритого депо. Вона простягає руку: «Ваш квиток?»", "At an empty stop stands a conductor in the uniform of a long-closed depot. She holds out her hand: \"Your ticket?\"" },
+            { "Віддати квиток", "Hand over a ticket" },
+            { "Вона пробиває квиток і мовчки ставить біля дверей акумулятор.", "She punches the ticket and silently sets a battery by the door." },
+            { "Проїхати повз", "Drive past" },
+            { "Її погляд проводжає вас довго. Вогник чомусь зіщулюється.", "Her gaze follows you for a long time. For some reason the Flame shrinks." },
+            { "Ліхтар, що ще дихає", "The lamp still breathing" },
+            { "Один ліхтар на вулиці ще тьмяно жевріє. Вогник тягнеться до нього.", "One street lamp still glows faintly. The Flame reaches towards it." },
+            { "Дати Вогнику забрати це світло", "Let the Flame take that light" },
+            { "Ліхтар гасне назавжди. Вогник яскравіє й довго мовчить.", "The lamp goes out forever. The Flame brightens and stays silent for a long time." },
+            { "Залишити ліхтар світити", "Leave the lamp shining" },
+            { "Ви вмикаєте фари й сигналите йому на прощання. Чомусь у салоні стає тепліше.", "You flash the headlights and honk goodbye. Somehow the cabin gets warmer." },
+            { "Обірваний дріт", "The broken wire" },
+            { "Над дорогою гойдається дріт і сиплеться іскрами. Струм ще є.", "A wire swings over the road, showering sparks. There is still current." },
+            { "Під'єднатися на ходу", "Connect on the move" },
+            { "Є заряд! Але розряд боляче вдарив і по Вогнику.", "Charged! But the discharge hit the Flame hard too." },
+            { "Об'їхати", "Drive around" },
+            { "Об'їзд коштує трохи енергії, зате всі цілі.", "The detour costs some power, but everyone is unharmed." },
+            { "Дитина без тіні", "The child without a shadow" },
+            { "Посеред дороги стоїть дитина. Світло фар проходить крізь неї, і тіні немає.", "A child stands in the middle of the road. The headlights pass through and there is no shadow." },
+            { "Зупинитися й відчинити двері", "Stop and open the doors" },
+            { "У салон заходить холод, а дитини немає. На сидінні лежить свічка.", "Cold enters the cabin, but the child is gone. A candle lies on a seat." },
+            { "Натиснути на сигнал і їхати", "Honk and drive on" },
+            { "Дитина не зрушила з місця. Ви проїхали крізь неї. Вогник не каже ні слова.", "The child did not move. You drove through. The Flame says nothing." },
+            { "Кіоск «Преса»", "The \"Press\" kiosk" },
+            { "Кіоск відчинений, а всередині нікого. На прилавку сірники, поруч пачка старих квитків.", "The kiosk is open and empty. Matches lie on the counter next to a stack of old tickets." },
+            { "Взяти сірники", "Take the matches" },
+            { "Сірники сухі. Це вже удача.", "The matches are dry. That is luck already." },
+            { "Взяти квитки", "Take the tickets" },
+            { "Кажуть, ними ще можна розрахуватися. Хтось досі їх приймає.", "They say you can still pay with them. Someone still accepts them." },
+            { "Хор у темряві", "The choir in the dark" },
+            { "З темряви долинає спів. Вогник розгойдується в такт і наче засинає.", "Singing drifts from the darkness. The Flame sways in time and seems to fall asleep." },
+            { "Заглушити спів сиреною", "Drown it out with the siren" },
+            { "Сирена рве тишу. Спів обривається, Вогник здригається й прокидається.", "The siren tears the silence. The singing stops; the Flame shudders and wakes." },
+            { "Послухати ще трохи", "Listen a little longer" },
+            { "Стає дивно затишно. Коли ви отямились, полум'я стало значно меншим.", "It feels strangely cosy. When you come to, the flame is much smaller." },
+            { "Механік із ліхтариком", "The mechanic with a flashlight" },
+            { "На узбіччі механік махає згаслим ліхтариком: «Поділіться вогнем, а я підкручу вам контакти».", "A mechanic by the roadside waves a dead flashlight: \"Share some fire and I'll tune your contacts.\"" },
+            { "Віддати сірник", "Give a match" },
+            { "Механік щасливий. Тролейбус гуде бадьоріше.", "The mechanic is happy. The trolleybus hums more eagerly." },
+            { "Дати Вогнику поділитися", "Let the Flame share" },
+            { "Вогник простягає іскру. Йому важко, але механік не обманює.", "The Flame offers a spark. It is hard on it, but the mechanic keeps his word." },
+            { "Їхати далі", "Drive on" },
+            { "Ліхтарик ще довго блимає в дзеркалі, поки не зникає.", "The flashlight blinks in the mirror for a long time, then disappears." },
+            { "Чорний туман", "The black fog" },
+            { "Дорогу перетинає туман, густий, як сажа. Об'їзду не видно.", "Fog as thick as soot crosses the road. There is no way around." },
+            { "Їхати напролом", "Drive straight through" },
+            { "Туман лиже вікна. Вогник притискається до сидіння, але ви проходите.", "The fog licks the windows. The Flame presses against the seat, but you get through." },
+            { "Вибити туман обігрівачем на повну", "Blast the fog with the heater" },
+            { "Тепло розганяє темряву. Акумулятор це відчув.", "The heat drives back the dark. The battery felt that." },
+            { "Пекарня", "The bakery" },
+            { "Із вікна пекарні ще йде тепло, хоч у ній давно нікого немає.", "Warmth still comes from the bakery window, though nobody has been there for a long time." },
+            { "Постояти біля стіни", "Stand by the wall" },
+            { "Тепла стіна й запах хліба. На кілька хвилин усе майже добре.", "A warm wall and the smell of bread. For a few minutes everything is almost fine." },
+            { "Пошукати всередині", "Search inside" },
+            { "У шафі знайшлася свічка. Поки шукали, Вогник чекав сам і трохи згас.", "There was a candle in a cupboard. While you searched, the Flame waited alone and dimmed a little." },
+
+            // Репліки Вогника
+            { "Тепло! Я бачу аж до кінця салону!", "Warm! I can see all the way down the cabin!" },
+            { "Ось так. Тепер темрява відступить хоч на крок.", "That's it. Now the dark will back off at least a step." },
+            { "Мені стає важко світити...", "It's getting hard to shine..." },
+            { "Знайди щось, що горить. Будь ласка.", "Find something that burns. Please." },
+            { "Я... майже не відчуваю себе.", "I... can barely feel myself." },
+            { "Не дай мені згаснути. Свічку. Сірник. Хоч щось!", "Don't let me go out. A candle. A match. Anything!" },
+            { "О-о-о, смачно!", "Mmm, delicious!" },
+            { "Дякую. Я знову тут.", "Thank you. I'm back." },
+            { "Ти встиг. Ще трохи, і було б пізно.", "You made it. A little longer and it would have been too late." },
+            { "Холодно... Увімкни обігрівач або зачини двері.", "It's cold... Turn on the heater or close the doors." },
+            { "Цей холод їсть мене швидше за темряву.", "This cold eats me faster than the dark." },
+            { "Там щось є. Воно дивиться на мене.", "Something is out there. It's looking at me." },
+            { "Не підпускай їх до мене. Мені страшно!", "Keep them away from me. I'm scared!" },
+            { "Геть від нас!", "Get away from us!" },
+            { "Ох... Це забрало багато сили.", "Oh... That took a lot of strength." },
+            { "Тролейбус заснув. Йому потрібна енергія.", "The trolleybus fell asleep. It needs power." },
+            { "Щось клацнуло. Глянь, де блимає червоне.", "Something clicked. Look for what's blinking red." },
+            { "Візьми мене з собою. Сам я тут не впораюся.", "Take me with you. I can't manage here alone." },
+            { "Не затримуйся. Темрява вже знає, що ми тут.", "Don't linger. The dark already knows we're here." },
+            { "Депо? Там мають бути дроти з живою напругою.", "A depot? There should be live wires there." },
+            { "Там багато свічок. І не лише свічок. Обережно.", "Plenty of candles there. And not only candles. Careful." },
+            { "Зброя мене не гріє. Але тебе, може, вбереже.", "Weapons don't warm me. But they might protect you." },
+            { "Туди я ще не дивився. Побачимо, що чекає.", "I haven't looked there yet. Let's see what's waiting." },
+            { "Порожня дорога. Тихо. Майже добре.", "An empty road. Quiet. Almost nice." },
+            { "Я це відчуваю. Кінцева зовсім близько.", "I can feel it. The last stop is very close." },
+        };
+
+        /// <summary>Текст мовою гри. Якщо перекладу немає, лишається оригінал.</summary>
+        public static string T(string ukrainian)
+        {
+            if (GameSettings.Language == GameLanguage.Ukrainian || string.IsNullOrEmpty(ukrainian))
+                return ukrainian;
+
+            return English.TryGetValue(ukrainian, out string english) ? english : ukrainian;
+        }
+
+        public static string F(string ukrainianFormat, params object[] args) => string.Format(T(ukrainianFormat), args);
+
+        /// <summary>Чи є переклад: для перевірки, що всі тексти враховано.</summary>
+        public static bool Has(string ukrainian) => English.ContainsKey(ukrainian);
+    }
+}

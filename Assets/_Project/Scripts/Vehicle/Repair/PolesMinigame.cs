@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -23,7 +24,7 @@ namespace NightTrolleybus.Vehicle.Repair
                 char[] bar = new string('-', BarLength).ToCharArray();
                 bar[BarLength / 2] = '#';
                 bar[Mathf.RoundToInt(Marker * (BarLength - 1))] = '|';
-                return $"Штанги: Пробіл, коли | на дроті #\n[{new string(bar)}]\nПідключено: {hits}/{RequiredHits}";
+                return Loc.F("Штанги: Пробіл, коли | на дроті #\n[{0}]\nПідключено: {1}/{2}", new string(bar), hits, RequiredHits);
             }
         }
 

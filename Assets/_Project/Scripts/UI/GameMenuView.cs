@@ -26,6 +26,8 @@ namespace NightTrolleybus.UI
         [SerializeField] private Sprite square;
         [SerializeField] private Sprite glow;
         [SerializeField] private Sprite[] flameFrames;
+        [SerializeField] private Sprite candle;
+        [SerializeField] private Sprite bowl;
         [SerializeField] private Font font;
 
         public event Action StartRequested;
@@ -39,6 +41,8 @@ namespace NightTrolleybus.UI
         private GameObject dim;
         private RectTransform pageRoot;
         private Image flameImage;
+        private Image candleImage;
+        private Image bowlImage;
         private Image glowImage;
         private Image darknessImage;
         private RectTransform startButtonRect;
@@ -96,6 +100,8 @@ namespace NightTrolleybus.UI
             glowImage.rectTransform.sizeDelta = Vector2.one * Mathf.Lerp(120f, 1150f, flameStrength);
             flameImage.rectTransform.localScale = Vector3.one * Mathf.Lerp(0.25f, 2.1f, flameStrength);
             flameImage.color = Color.Lerp(new Color(0.55f, 0.15f, 0.08f), new Color(1f, 0.85f, 0.45f), flameStrength);
+            candleImage.color = Color.Lerp(new Color(0.12f, 0.1f, 0.1f), Color.white, flameStrength);
+            bowlImage.color = candleImage.color;
             // Згасаючий Вогник забирає з собою весь кадр, разом із теплим вікном на заставці.
             darknessImage.color = new Color(0f, 0f, 0.02f, Mathf.Lerp(0.88f, 0f, flameStrength));
 
@@ -130,6 +136,7 @@ namespace NightTrolleybus.UI
             startButtonRect = AddButton(MenuText.Get("start"), true, OnStartPressed);
             AddButton(MenuText.Get("continue"), hasSave, () => ContinueRequested?.Invoke());
             AddButton(MenuText.Get("settings"), true, () => ShowSettingsPage(ShowMainPage));
+            AddButton(MenuText.Get("controls"), true, () => ShowControlsPage(ShowMainPage));
             quitButtonRect = AddButton(MenuText.Get("quit"), true, Quit);
             FinishPage();
         }
@@ -141,6 +148,7 @@ namespace NightTrolleybus.UI
             AddTitle(MenuText.Get("pause"), null);
             AddButton(MenuText.Get("continue"), true, () => ResumeRequested?.Invoke());
             AddButton(MenuText.Get("settings"), true, () => ShowSettingsPage(ShowPausePage));
+            AddButton(MenuText.Get("controls"), true, () => ShowControlsPage(ShowPausePage));
             AddButton(MenuText.Get("exitToMenu"), true, ShowExitConfirm);
             FinishPage();
         }
@@ -155,7 +163,18 @@ namespace NightTrolleybus.UI
             AddVolumeSlider("volume", GameSettings.Volume, value => GameSettings.Volume = value);
             AddVolumeSlider("musicVolume", GameSettings.MusicVolume, value => GameSettings.MusicVolume = value);
             AddButton($"{MenuText.Get("language")}: {MenuText.CurrentLanguageName}", true, NextLanguage);
-            AddNote(MenuText.Get("languageNote"));
+            AddButton(MenuText.Get("back"), true, back);
+            FinishPage();
+        }
+
+        private void ShowControlsPage(Action back)
+        {
+            redraw = () => ShowControlsPage(back);
+            bool isMain = art.activeSelf;
+            BeginPage(isMain ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 0.5f), isMain ? new Vector2(130f, 90f) : new Vector2(0f, 150f),
+                isMain ? TextAnchor.UpperLeft : TextAnchor.UpperCenter);
+            AddTitle(MenuText.Get("controls"), null);
+            AddText(MenuText.Get("controlsList"), 26, 400f, FontStyle.Normal, Color.white);
             AddButton(MenuText.Get("back"), true, back);
             FinishPage();
         }
@@ -383,11 +402,20 @@ namespace NightTrolleybus.UI
             Stretch(darknessImage.rectTransform);
 
             // Вогник сидить у єдиному вікні тролейбуса на малюнку.
-            var flameAnchor = new Vector2(0.7f, 0.385f);
+            var flameAnchor = new Vector2(0.671f, 0.39f);
+            // Свічка не змінюється: вогник росте від її верхнього краю.
+            candleImage = CreateImage("Candle", art.transform, candle, Color.white);
+            candleImage.rectTransform.pivot = new Vector2(0.5f, 1f);
+            Place(candleImage.rectTransform, flameAnchor, new Vector2(64f, 40f));
+            bowlImage = CreateImage("Bowl", art.transform, bowl, Color.white);
+            Place(bowlImage.rectTransform, flameAnchor, new Vector2(56f, 24f));
+            bowlImage.rectTransform.anchoredPosition = new Vector2(0f, -40f);
+            // Світіння лягає поверх свічки й чаші: вони освітлені так само, як вікно навколо.
             glowImage = CreateImage("Glow", art.transform, glow, new Color(1f, 0.62f, 0.25f, 0.7f));
             Place(glowImage.rectTransform, flameAnchor, new Vector2(460f, 460f));
             flameImage = CreateImage("Flame", art.transform, flameFrames[0], new Color(1f, 0.72f, 0.32f));
-            Place(flameImage.rectTransform, flameAnchor, new Vector2(64f, 80f));
+            flameImage.rectTransform.pivot = new Vector2(0.5f, 0f);
+            Place(flameImage.rectTransform, flameAnchor, new Vector2(64f, 40f));
 
             var vignette = CreateImage("LeftShade", art.transform, square, new Color(0f, 0f, 0f, 0.35f));
             vignette.rectTransform.anchorMin = Vector2.zero;

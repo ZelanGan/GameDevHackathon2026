@@ -8,7 +8,7 @@ namespace NightTrolleybus.UI
     {
         private static readonly Dictionary<string, string[]> Table = new Dictionary<string, string[]>
         {
-            { "title", new[] { "НІЧНИЙ ТРОЛЕЙБУС", "NIGHT TROLLEYBUS" } },
+            { "title", new[] { "LAST LIGHT", "LAST LIGHT" } },
             { "subtitle", new[] { "Довези Вогника до кінцевої", "Carry the Flame to the last stop" } },
             { "start", new[] { "Почати", "Start" } },
             { "continue", new[] { "Продовжити", "Continue" } },
@@ -16,6 +16,14 @@ namespace NightTrolleybus.UI
             { "quit", new[] { "Вийти", "Quit" } },
             { "pause", new[] { "ПАУЗА", "PAUSE" } },
             { "exitToMenu", new[] { "Вийти в головне меню", "Exit to main menu" } },
+            { "controls", new[] { "Керування", "Controls" } },
+            {
+                "controlsList", new[]
+                {
+                    "A / D: хода в салоні\nW / A / S / D: рух на зупинці\nW / S за кермом: швидкість\nМиша: погляд на зупинці\nЛКМ: удар\nE: дія\nF: Спалах\nR: Підсвітити\nG: зігріти салон\nQ: використати предмет\nКолесо миші, Tab, 1-6: вибір предмета\nEsc: пауза",
+                    "A / D: walk in the bus\nW / A / S / D: move at a stop\nW / S at the wheel: speed\nMouse: look at a stop\nLMB: strike\nE: interact\nF: Flash\nR: Reveal\nG: warm the cabin\nQ: use item\nMouse wheel, Tab, 1-6: select item\nEsc: pause"
+                }
+            },
             { "volume", new[] { "Звук", "Sound" } },
             { "musicVolume", new[] { "Музика", "Music" } },
             { "language", new[] { "Мова", "Language" } },
@@ -25,7 +33,6 @@ namespace NightTrolleybus.UI
             { "skip", new[] { "Пробіл: пропустити", "Space: skip" } },
             { "yes", new[] { "Так", "Yes" } },
             { "no", new[] { "Ні", "No" } },
-            { "languageNote", new[] { "Поки що мова діє лише в меню", "For now the language applies to menus only" } },
         };
 
         private static readonly string[] LanguageNames = { "Українська", "English" };

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using NightTrolleybus.Core.Events;
 using NightTrolleybus.Items;
 using NightTrolleybus.Player;
@@ -56,14 +58,7 @@ namespace NightTrolleybus.EditorTools
             if (!BeginScene(DepotPath, new Color(0.62f, 0.58f, 0.54f), "TopDepotFloor", out GameObject player, out Transform level))
                 return;
 
-            // Депо: електрика й запчастини, кілька кімнат і небагато ворогів.
-            Wall(level, 18, -12, 19, -2);
-            Wall(level, 18, 2, 19, 12);
-            Wall(level, 38, -12, 39, 4);
-            Wall(level, 38, 8, 39, 12);
-            foreach (Vector2 crate in new[] { new Vector2(10f, 5f), new Vector2(12f, -6f), new Vector2(26f, 6f), new Vector2(30f, -5f), new Vector2(46f, -3f) })
-                CreateCrate(level, crate);
-
+            // Депо: електрика й запчастини, кілька кімнат і небагато ворогів. Планування будує генератор.
             // Станція стоїть у кадрі біля входу й світиться сама, щоб її не треба було шукати в темряві.
             GameObject charger = CreateArt("PowerCharger", null, new Vector3(7f, 2.5f, 0f), "Top_Charger", 1, Color.white, UnlitMaterial);
             AddFittedCollider(charger, true);
@@ -74,10 +69,13 @@ namespace NightTrolleybus.EditorTools
             beacon.intensity = 1.2f;
             Wire(charger.AddComponent<PowerCharger>(), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")), ("beacon", beacon));
 
-            Pickup("Match", Match, 8f, -3f);
-            Pickup("Candle", Candle, 14f, 8f);
-            Pickup("Battery_A", Battery, 25f, -8f);
-            Pickup("Ticket", Ticket, 33f, 9f);
+            var pickups = new List<GameObject>
+            {
+                Pickup("Match", Match, 8f, -3f),
+                Pickup("Candle", Candle, 14f, 8f),
+                Pickup("Battery_A", Battery, 25f, -8f),
+                Pickup("Ticket", Ticket, 33f, 9f)
+            };
 
             // Прихована кімната в кутку: прохід до неї відкривається лише під Підсвічуванням.
             Wall(level, 52, 6, 60, 7);
@@ -87,9 +85,17 @@ namespace NightTrolleybus.EditorTools
             hiddenWall.AddComponent<BoxCollider2D>().size = new Vector2(1f, 2f);
             MakeRevealable(hiddenWall, true);
             Pickup("Battery_Hidden", Battery, 56f, 9.5f);
-            MakeRevealable(Pickup("Candle_Hidden", Candle, 44f, 9f));
+            GameObject hiddenCandle = Pickup("Candle_Hidden", Candle, 44f, 9f);
+            MakeRevealable(hiddenCandle);
+            pickups.Add(hiddenCandle);
 
-            FinishScene(DepotPath, player, new[] { new Vector2(24f, 0f), new Vector2(34f, -8f), new Vector2(50f, 0f) });
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, "Top_Wall", pickups, 3,
+                new[] { "Top_Crate", "Top_Barrel", "Top_Spool", "Top_Tires", "Top_Workbench" },
+                new[] { "Decal_Oil", "Decal_Crack", "Decal_Cable", "Decal_Dust", "Decal_Paper" });
+            SetInt(layout, "lastWallX", 48);
+            SetReserved(layout, new RectInt(5, 12, 5, 5), new RectInt(52, 18, 8, 6));
+
+            FinishScene(DepotPath, player);
         }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Market Scene")]
@@ -99,23 +105,33 @@ namespace NightTrolleybus.EditorTools
                 return;
 
             // Супермаркет: ряди полиць, багато предметів, але й багато ворогів.
-            for (int x = 12; x < 56; x += 10)
+            var pickups = new List<GameObject>
             {
-                Wall(level, x, -9, x + 1, -2);
-                Wall(level, x, 2, x + 1, 9);
+                Pickup("Candle_A", Candle, 7f, 6f),
+                Pickup("Match_A", Match, 16f, -6f),
+                Pickup("Candle_B", Candle, 18f, 6f),
+                Pickup("Match_B", Match, 26f, -5f),
+                Pickup("Ticket_A", Ticket, 28f, 7f),
+                Pickup("Candle_C", Candle, 37f, -7f),
+                Pickup("Ticket_B", Ticket, 46f, 5f)
+            };
+            foreach ((string pickupName, ItemData item, float x, float y) in new[] { ("Ticket_Hidden", Ticket, 48f, -10f), ("Candle_Hidden", Candle, 57f, 10f) })
+            {
+                GameObject hidden = Pickup(pickupName, item, x, y);
+                MakeRevealable(hidden);
+                pickups.Add(hidden);
             }
 
-            Pickup("Candle_A", Candle, 7f, 6f);
-            Pickup("Match_A", Match, 16f, -6f);
-            Pickup("Candle_B", Candle, 18f, 6f);
-            Pickup("Match_B", Match, 26f, -5f);
-            Pickup("Ticket_A", Ticket, 28f, 7f);
-            Pickup("Candle_C", Candle, 37f, -7f);
-            Pickup("Ticket_B", Ticket, 46f, 5f);
-            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 48f, -10f));
-            MakeRevealable(Pickup("Candle_Hidden", Candle, 57f, 10f));
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Aisles, "Top_Shelf", pickups, 6,
+                new[] { "Top_Cart", "Top_BoxPile", "Top_Checkout", "Top_Crate" },
+                new[] { "Decal_Spill", "Decal_Paper", "Decal_Can", "Decal_Crack", "Decal_Dust" });
+            SetInt(layout, "firstWallMin", 10);
+            SetInt(layout, "firstWallMax", 13);
+            SetInt(layout, "spacingMin", 4);
+            SetInt(layout, "spacingMax", 7);
+            SetInt(layout, "lastWallX", 56);
 
-            FinishScene(MarketPath, player, new[] { new Vector2(16f, 0f), new Vector2(25f, 6f), new Vector2(31f, -6f), new Vector2(38f, 0f), new Vector2(47f, 7f), new Vector2(54f, -5f) }, 18f, 9f);
+            FinishScene(MarketPath, player, 18f, 9f);
         }
 
         [MenuItem("Night Trolleybus/Scenes/Build Stop Gun Shop Scene")]
@@ -125,20 +141,26 @@ namespace NightTrolleybus.EditorTools
                 return;
 
             // Магазин зброї: зал із прилавками, а далі склад із небезпечними знахідками.
-            Wall(level, 26, -12, 27, -2);
-            Wall(level, 26, 2, 27, 12);
-            CreateCrate(level, new Vector2(36f, 4f));
-            CreateCrate(level, new Vector2(44f, -6f));
+            GameObject hiddenTicket = Pickup("Ticket_Hidden", Ticket, 22f, -9f);
+            MakeRevealable(hiddenTicket);
+            var pickups = new List<GameObject> { Pickup("Ticket", Ticket, 8f, -6f), hiddenTicket, Pickup("Ticket_Store", Ticket, 50f, 8f) };
 
-            Pickup("Ticket", Ticket, 8f, -6f);
-            MakeRevealable(Pickup("Ticket_Hidden", Ticket, 22f, -9f));
-            Pickup("Ticket_Store", Ticket, 50f, 8f);
+            GameObject[] stands =
+            {
+                CreateStand("Stand_Crowbar", new Vector2(13f, 5f), Ticket, 2, Crowbar, null),
+                CreateStand("Stand_FireAxe", new Vector2(18f, 5f), Ticket, 4, FireAxe, null),
+                CreateStand("Stand_Candle", new Vector2(23f, 5f), Ticket, 1, null, Candle)
+            };
 
-            CreateStand("Stand_Crowbar", new Vector2(13f, 5f), Ticket, 2, Crowbar, null);
-            CreateStand("Stand_FireAxe", new Vector2(18f, 5f), Ticket, 4, FireAxe, null);
-            CreateStand("Stand_Candle", new Vector2(23f, 5f), Ticket, 1, null, Candle);
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, "Top_Wall", pickups, 2,
+                new[] { "Top_AmmoBox", "Top_Target", "Top_GunRack", "Top_Crate", "Top_Barrel" },
+                new[] { "Decal_Shells", "Decal_Crack", "Decal_Dust", "Decal_Paper", "Decal_Oil" });
+            // Перша стіна далеко від входу: у залі мають поміститися всі прилавки.
+            SetInt(layout, "firstWallMin", 24);
+            SetInt(layout, "firstWallMax", 28);
+            WireTransforms(layout, "nearEntrance", stands);
 
-            FinishScene(GunShopPath, player, new[] { new Vector2(38f, -2f), new Vector2(50f, 3f) });
+            FinishScene(GunShopPath, player);
         }
 
         private static bool BeginScene(string path, Color floorColor, string tileName, out GameObject player, out Transform level)
@@ -150,7 +172,8 @@ namespace NightTrolleybus.EditorTools
 
             // Нова сцена вивантажує незбережені асети, тому створюємо її до них.
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            CreateGlobalLight();
+            // Без загального світла за стіною зовсім темно, і ворога там не видно.
+            CreateGlobalLight(0f);
 
             level = new GameObject(LevelName).transform;
             CreateFloor(level, floorColor, tileName);
@@ -165,10 +188,18 @@ namespace NightTrolleybus.EditorTools
 
             player = CreatePlayer(respawn);
             CreateFlame(player.transform);
-            player.transform.Find("Flame").localPosition = new Vector3(0.45f, 0.55f, 0f);
-            var flameLight = player.GetComponentInChildren<Light2D>();
+            // Чаша зі свічкою стоїть на кашкеті водія й менша, ніж на сидінні, щоб не перевищувати голову.
+            Transform flameOnHead = player.transform.Find("Flame");
+            flameOnHead.localPosition = new Vector3(0f, 0.68f, 0f);
+            flameOnHead.localScale = Vector3.one * 0.6f;
+            // Світло йде від центра водія: Вогник на голові міг би опинитися за стіною й освітити те, що за нею.
+            Object.DestroyImmediate(flameOnHead.GetComponent<Light2D>());
+            var flameLight = new GameObject("FlameLight").AddComponent<Light2D>();
+            flameLight.transform.SetParent(player.transform, false);
+            flameLight.lightType = Light2D.LightType.Point;
             flameLight.shadowsEnabled = true;
-            flameLight.shadowIntensity = 0.85f;
+            flameLight.shadowIntensity = 1f;
+            Wire(flameOnHead.GetComponent<NightTrolleybus.Flame.FlameView>(), ("flameLight", flameLight));
             CreateAbilities(player, player.transform, false);
 
             GameObject door = CreateArt("BusDoor", level, new Vector3(0.5f, 0f, 0f), "Top_Door", 1);
@@ -177,15 +208,50 @@ namespace NightTrolleybus.EditorTools
             return true;
         }
 
-        private static void FinishScene(string path, GameObject player, Vector2[] enemies, float slowSpawn = 28f, float fastSpawn = 14f)
+        private static StopLayoutGenerator CreateLayout(Transform level, StopInterior interior, string interiorSprite,
+            List<GameObject> pickups, int enemyCount, string[] props, string[] decals)
+        {
+            var layout = new GameObject("Layout").AddComponent<StopLayoutGenerator>();
+            layout.transform.SetParent(level, false);
+
+            // Зразок твердого об'єкта: його копії стають стінами й меблями. Тінь кидає окремий прозорий квадрат.
+            GameObject template = CreateTiled("SolidTemplate", layout.transform, Vector3.zero, interiorSprite, Vector2.one, Color.white, 1);
+            template.AddComponent<BoxCollider2D>().size = Vector2.one;
+            GameObject shadow = CreateSprite("Shadow", template.transform, Vector3.zero, Vector3.one, Color.clear, 0);
+            ConfigureCaster(shadow);
+            template.SetActive(false);
+
+            Wire(layout, ("solidTemplate", template), ("interiorSprite", PixelArt.Get(interiorSprite)));
+            SetEnum(layout, "interior", (int)interior);
+            WireArray(layout, "props", props.Select(name => (Object)PixelArt.Get(name)).ToArray());
+            WireArray(layout, "decals", decals.Select(name => (Object)PixelArt.Get(name)).ToArray());
+            WireTransforms(layout, "pickups", pickups);
+
+            GameObject enemyPrefab = GetOrCreateEnemyPrefab();
+            var enemies = new List<GameObject>();
+            for (int i = 0; i < enemyCount; i++)
+                enemies.Add((GameObject)PrefabUtility.InstantiatePrefab(enemyPrefab));
+            WireTransforms(layout, "enemies", enemies);
+            return layout;
+        }
+
+        private static void WireTransforms(Object target, string field, IEnumerable<GameObject> objects) =>
+            WireArray(target, field, objects.Select(item => (Object)item.transform).ToArray());
+
+        private static void SetReserved(StopLayoutGenerator layout, params RectInt[] areas)
+        {
+            var serialized = new SerializedObject(layout);
+            SerializedProperty array = serialized.FindProperty("reserved");
+            array.arraySize = areas.Length;
+            for (int i = 0; i < areas.Length; i++)
+                array.GetArrayElementAtIndex(i).rectIntValue = areas[i];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(layout);
+        }
+
+        private static void FinishScene(string path, GameObject player, float slowSpawn = 28f, float fastSpawn = 14f)
         {
             GameObject enemyPrefab = GetOrCreateEnemyPrefab();
-            foreach (Vector2 position in enemies)
-            {
-                var enemy = (GameObject)PrefabUtility.InstantiatePrefab(enemyPrefab);
-                enemy.transform.position = position;
-            }
-
             CreateDarkness(player.transform, enemyPrefab, slowSpawn, fastSpawn);
             BusSceneBuilder.CreateFollowCameras(player.transform, 4f, 0f);
 
@@ -197,13 +263,14 @@ namespace NightTrolleybus.EditorTools
         private static GameObject Pickup(string objectName, ItemData item, float x, float y) =>
             CreatePickup(objectName, item, new Vector3(x, y, 0f));
 
-        private static void CreateStand(string objectName, Vector2 position, ItemData cost, int count, WeaponData weapon, ItemData item)
+        private static GameObject CreateStand(string objectName, Vector2 position, ItemData cost, int count, WeaponData weapon, ItemData item)
         {
             GameObject stand = CreateArt(objectName, null, position, "Top_Counter", 1);
             AddFittedCollider(stand, true);
             var trade = stand.AddComponent<TradeStand>();
             Wire(trade, ("costItem", cost), ("rewardWeapon", weapon), ("rewardItem", item), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
             SetInt(trade, "costCount", count);
+            return stand;
         }
 
         private static void CreateFloor(Transform level, Color color, string tileName)
@@ -249,19 +316,20 @@ namespace NightTrolleybus.EditorTools
             wall.AddComponent<BoxCollider2D>().size = size;
 
             // Тінь будується за формою спрайта, а плитка її не дає, тому тінь кидає окремий прозорий квадрат.
-            GameObject shadow = CreateSprite("Shadow", wall.transform, Vector3.zero, new Vector3(size.x, size.y, 1f), Color.clear, 0);
+            // Він тонкий, щоб ближня до світла половина стіни лишалася видимою, і довший за стіну,
+            // щоб на стику зі сусідньою стіною світло не прослизало між тінями.
+            Vector3 shadowScale = size.x <= size.y ? new Vector3(0.1f, size.y + 1.2f, 1f) : new Vector3(size.x + 1.2f, 0.1f, 1f);
+            GameObject shadow = CreateSprite("Shadow", wall.transform, Vector3.zero, shadowScale, Color.clear, 0);
+            ConfigureCaster(shadow);
+        }
+
+        private static void ConfigureCaster(GameObject shadow)
+        {
             var caster = shadow.AddComponent<ShadowCaster2D>();
             caster.useRendererSilhouette = true;
             caster.castsShadows = true;
-        }
-
-        private static void CreateCrate(Transform level, Vector2 position)
-        {
-            GameObject crate = CreateArt($"Crate_{position.x}_{position.y}", level, position, "Top_Crate", 2);
-            AddFittedCollider(crate, false);
-            var caster = crate.AddComponent<ShadowCaster2D>();
-            caster.useRendererSilhouette = true;
-            caster.castsShadows = true;
+            // Обрізання країв росте з масштабом і на довгій стіні лишає діру в тіні.
+            caster.trimEdge = 0f;
         }
 
         private static GameObject CreatePlayer(Transform respawn)
@@ -277,7 +345,7 @@ namespace NightTrolleybus.EditorTools
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             player.AddComponent<CircleCollider2D>().radius = 0.38f;
             SetBool(player.AddComponent<PlayerMotor2D>(), "topDown", true);
-            Wire(player.AddComponent<PlayerInteractor>(), ("promptChanged", Channel<StringEventChannel>("InteractionPromptChanged")));
+            AddInteractor(player);
             Wire(player.AddComponent<Health>(), ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")));
             Wire(player.AddComponent<PlayerDeathHandler>(), ("respawnPoint", respawn), ("noticeRaised", noticeRaised));
 

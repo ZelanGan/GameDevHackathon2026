@@ -36,7 +36,7 @@ namespace NightTrolleybus.Narrative
         private void Run(RoadEventData roadEvent, Action finished)
         {
             onFinished = finished;
-            objectiveChanged.Raise("Оберіть, як вчинити");
+            objectiveChanged.Raise(Loc.T("Оберіть, як вчинити"));
             view.ShowEvent(roadEvent, CanChoose, OnChoice);
         }
 

@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using UnityEngine;
 
 namespace NightTrolleybus.Items
@@ -13,7 +14,7 @@ namespace NightTrolleybus.Items
         [SerializeField] private float range = 1.4f;
 
         public string Id => id;
-        public string DisplayName => displayName;
+        public string DisplayName => Loc.T(displayName);
         public float Damage => damage;
         public float Cooldown => cooldown;
         public float Range => range;

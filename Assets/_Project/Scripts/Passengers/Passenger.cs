@@ -29,6 +29,8 @@ namespace NightTrolleybus.Passengers
             }
         }
 
+        public bool CanInteract => PendingGift != null || manager.CanLeave;
+
         public void Initialize(PassengerRoster.Entry rosterEntry, PassengerManager passengerManager)
         {
             entry = rosterEntry;

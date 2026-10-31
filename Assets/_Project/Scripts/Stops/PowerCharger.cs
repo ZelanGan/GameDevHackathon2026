@@ -19,6 +19,8 @@ namespace NightTrolleybus.Stops
 
         public string Prompt => used ? "Зарядна станція порожня" : $"Зарядити тролейбус (+{Mathf.RoundToInt(amount)} енергії)";
 
+        public bool CanInteract => !used;
+
         private void Update()
         {
             if (!used)
@@ -34,7 +36,7 @@ namespace NightTrolleybus.Stops
             beacon.enabled = false;
             GetComponent<SpriteRenderer>().color = new Color(0.4f, 0.4f, 0.45f);
             GameContext.Power?.Restore(amount);
-            noticeRaised.Raise("Тролейбус заряджено");
+            noticeRaised.Raise(Loc.T("Тролейбус заряджено"));
             GameContext.Audio?.Play(SoundId.PowerUp);
         }
     }

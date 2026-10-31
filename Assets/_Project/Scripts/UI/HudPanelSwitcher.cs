@@ -9,6 +9,7 @@ namespace NightTrolleybus.UI
         [SerializeField] private StringEventChannel gameStateChanged;
         [SerializeField] private GameObject ridePanel;
         [SerializeField] private GameObject stopPanel;
+        [SerializeField] private GameObject inventoryPanel;
 
         private void OnEnable() => gameStateChanged.Raised += OnStateChanged;
 
@@ -18,6 +19,7 @@ namespace NightTrolleybus.UI
         {
             ridePanel.SetActive(state == "Ride");
             stopPanel.SetActive(state == "Stop");
+            inventoryPanel.SetActive(state == "Ride" || state == "Stop");
         }
     }
 }

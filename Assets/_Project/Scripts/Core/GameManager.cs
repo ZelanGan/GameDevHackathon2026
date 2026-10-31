@@ -20,7 +20,10 @@ namespace NightTrolleybus.Core
         private const string StopState = "Stop";
         private const string EventStateName = "Event";
         private const string MenuStateName = "Menu";
+        private const string CutsceneStateName = "Cutscene";
+        private const string EndStateName = "End";
         private const float StrongEndingFlame = 45f;
+        private const float LowPower = 0.5f;
 
         [SerializeField] private SceneLoader sceneLoader;
         [SerializeField] private RouteManager route;
@@ -38,6 +41,7 @@ namespace NightTrolleybus.Core
 
         [Header("Інтерфейс")]
         [SerializeField] private GameMenuView menu;
+        [SerializeField] private CutsceneView cutscene;
         [SerializeField] private GameObject endPanel;
         [SerializeField] private Text endLabel;
         [SerializeField] private Button restartButton;
@@ -51,6 +55,7 @@ namespace NightTrolleybus.Core
         {
             pauseState = new PauseState(this);
             endPanel.SetActive(false);
+            restartButton.onClick.AddListener(() => GameContext.Audio?.Play(SoundId.UiClick));
             restartButton.onClick.AddListener(ReturnToMenu);
         }
 
@@ -90,7 +95,10 @@ namespace NightTrolleybus.Core
         private void StartNewGame()
         {
             saveSystem.Delete();
-            BeginNewGame();
+            // Катсцена лише на новій грі: «Продовжити» одразу веде на мапу.
+            menu.Hide();
+            gameStateChanged.Raise(CutsceneStateName);
+            cutscene.Play(BeginNewGame);
         }
 
         private void ContinueGame()
@@ -156,6 +164,7 @@ namespace NightTrolleybus.Core
 
         public void SetPauseVisible(bool visible)
         {
+            GameContext.Audio?.SetPaused(visible);
             if (visible)
                 menu.ShowPause();
             else
@@ -165,6 +174,7 @@ namespace NightTrolleybus.Core
         public void ShowEnd(string message)
         {
             gameEnded = true;
+            gameStateChanged.Raise(EndStateName);
             objectiveChanged.Raise(string.Empty);
             endLabel.text = message;
             endPanel.SetActive(true);
@@ -175,8 +185,22 @@ namespace NightTrolleybus.Core
         {
             // Час на мапі стоїть, тому вибір маршруту нічого не коштує.
             stateMachine.Change(new SceneState(this, MapState, "RouteMap", 0f, false));
-            objectiveChanged.Raise("Оберіть наступний пункт маршруту: натисніть помаранчевий прямокутник");
+            objectiveChanged.Raise(BuildMapObjective());
             saveSystem.Save();
+        }
+
+        private string BuildMapObjective()
+        {
+            if (GameContext.Power.Normalized >= LowPower)
+                return "Оберіть наступний пункт маршруту: натисніть помаранчевий прямокутник";
+
+            foreach (RouteNode node in route.Nodes)
+            {
+                if (node.Type == NodeType.Depot && route.IsAvailable(node))
+                    return "Мало енергії! Їдьте в депо (зелений прямокутник): там зарядна станція";
+            }
+
+            return "Мало енергії, а депо зараз недоступне. Вимкніть обігрівач і оберіть шлях до депо";
         }
 
         private void OnNodeSelected(RouteNode node) =>
@@ -188,11 +212,16 @@ namespace NightTrolleybus.Core
             string stopScene = node.Type.StopScene();
 
             if (node.Type == NodeType.Final)
+            {
+                GameContext.Audio?.Play(SoundId.Victory);
                 stateMachine.Change(new EndState(this, BuildEnding()));
+            }
             else if (stopScene != null)
             {
                 stateMachine.Change(new SceneState(this, StopState, stopScene, 1f, false));
-                objectiveChanged.Raise("Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!");
+                objectiveChanged.Raise(node.Type == NodeType.Depot
+                    ? "Спершу заряд: шафа із синім світлом поруч із входом (E). Потім предмети й назад до дверей ліворуч"
+                    : "Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!");
             }
             else if (node.Type == NodeType.Event)
                 stateMachine.Change(new EventState(this, (runner, finished) => runner.RunRandom(finished)));
@@ -215,8 +244,11 @@ namespace NightTrolleybus.Core
 
         private void OnFlameExtinguished()
         {
-            if (!gameEnded)
-                stateMachine.Change(new EndState(this, "Вогник згас. Ніч лишилася назавжди."));
+            if (gameEnded)
+                return;
+
+            GameContext.Audio?.Play(SoundId.Lose);
+            stateMachine.Change(new EndState(this, "Вогник згас. Ніч лишилася назавжди."));
         }
 
         private void ReturnToMenu()

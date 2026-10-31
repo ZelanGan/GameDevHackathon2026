@@ -29,6 +29,7 @@ namespace NightTrolleybus.Vehicle.Repair
 
             fault = faultToRepair;
             minigame = Create(faultToRepair);
+            GameContext.Audio?.Play(SoundId.Lock);
             playerMotor.SetLocked(true);
         }
 
@@ -64,6 +65,7 @@ namespace NightTrolleybus.Vehicle.Repair
             {
                 GameContext.Faults?.Clear(fault);
                 GameContext.Power?.Restore(powerOnRepair);
+                GameContext.Audio?.Play(SoundId.RepairDone);
                 Close();
                 return;
             }

@@ -11,6 +11,10 @@ namespace NightTrolleybus.Items.Effects
 
         public override string Description => $"+{Mathf.RoundToInt(amount)} до сили Вогника";
 
-        public override void Apply() => GameContext.Flame?.Restore(amount);
+        public override void Apply()
+        {
+            GameContext.Flame?.Restore(amount);
+            GameContext.Audio?.Play(SoundId.FlameFed);
+        }
     }
 }

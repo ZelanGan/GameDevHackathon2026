@@ -77,7 +77,8 @@ namespace NightTrolleybus.Items
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null || items.Count == 0)
+            // Коли час стоїть (мапа, меню, пауза, подія), панелі не видно, тож предмет не має витрачатися наосліп.
+            if (keyboard == null || items.Count == 0 || Time.timeScale <= 0f)
                 return;
 
             if (keyboard.tabKey.wasPressedThisFrame)

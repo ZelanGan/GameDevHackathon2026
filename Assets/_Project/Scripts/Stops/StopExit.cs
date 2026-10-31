@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Core.Events;
 using NightTrolleybus.Player;
 using UnityEngine;
@@ -12,6 +13,10 @@ namespace NightTrolleybus.Stops
 
         public string Prompt => "Повернутися в тролейбус";
 
-        public void Interact() => stopCompleted.Raise();
+        public void Interact()
+        {
+            GameContext.Audio?.Play(SoundId.DoorClose);
+            stopCompleted.Raise();
+        }
     }
 }

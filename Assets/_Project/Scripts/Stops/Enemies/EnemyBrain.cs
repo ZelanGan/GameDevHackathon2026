@@ -18,6 +18,7 @@ namespace NightTrolleybus.Stops.Enemies
         private float stunTimer;
         private float attackTimer;
         private Vector2 moveDirection;
+        private bool isAlerted;
 
         public bool IsStunned => stunTimer > 0f;
 
@@ -47,6 +48,9 @@ namespace NightTrolleybus.Stops.Enemies
 
         public void Stun(float duration) => stunTimer = duration;
 
+        /// <summary>Моб одразу знає, де гравець, навіть якщо той далі за радіус виявлення.</summary>
+        public void Alert() => isAlerted = true;
+
         private void Update()
         {
             attackTimer -= Time.deltaTime;
@@ -68,9 +72,10 @@ namespace NightTrolleybus.Stops.Enemies
                 {
                     attackTimer = data.AttackInterval;
                     playerHealth.TakeDamage(data.AttackDamage);
+                    GameContext.Audio?.Play(SoundId.Hurt);
                 }
             }
-            else if (distance <= data.DetectionRange)
+            else if (isAlerted || distance <= data.DetectionRange)
             {
                 moveDirection = toPlayer / distance;
             }

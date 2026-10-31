@@ -1,3 +1,4 @@
+using NightTrolleybus.Core;
 using NightTrolleybus.Player;
 using UnityEngine;
 
@@ -17,6 +18,7 @@ namespace NightTrolleybus.Vehicle
             bool driving = !bus.IsDriving;
             bus.SetDriving(driving);
             playerMotor.SetLocked(driving);
+            GameContext.Audio?.Play(SoundId.DeviceSwitch);
         }
     }
 }

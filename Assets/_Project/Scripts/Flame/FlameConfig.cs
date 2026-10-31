@@ -28,7 +28,7 @@ namespace NightTrolleybus.Flame
         [SerializeField] private float maxFlame = 100f;
         [SerializeField] private float startFlame = 85f;
         [Tooltip("Скільки полум'я втрачається за секунду без зовнішніх чинників")]
-        [SerializeField] private float baseDrainPerSecond = 0.2f;
+        [SerializeField] private float baseDrainPerSecond = 0.22f;
         [Tooltip("Запас для переходу в сильніший стан, щоб стан не мерехтів на межі порога")]
         [SerializeField] private float stateHysteresis = 2f;
         [Tooltip("Температура 0..1, нижче якої холод прискорює згасання")]

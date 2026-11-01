@@ -153,6 +153,8 @@ namespace NightTrolleybus.EditorTools
             Debug.Log($"Сцену зібрано: {BootPath}");
         }
 
+        private static Sprite MapIcon(string iconName) => AssetDatabase.LoadAssetAtPath<Sprite>($"{Root}/Art/Map/{iconName}.png");
+
         [MenuItem("Night Trolleybus/Scenes/Build Route Map Scene")]
         public static void BuildMap()
         {
@@ -173,6 +175,11 @@ namespace NightTrolleybus.EditorTools
 
             var view = canvasObject.AddComponent<RouteMapView>();
             Wire(view, ("root", mapRoot), ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+            WireArray(view, "nodeIcons", new Object[]
+            {
+                MapIcon("Map_Depot"), MapIcon("Map_Supermarket"), MapIcon("Map_GunShop"),
+                MapIcon("Map_Event"), MapIcon("Map_EmptyRoad"), MapIcon("Map_Final")
+            });
 
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), MapPath);
             AssetDatabase.SaveAssets();

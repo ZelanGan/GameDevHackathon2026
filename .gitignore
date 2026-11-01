@@ -28,7 +28,7 @@
 UpgradeLog*.htm
 
 # Builds and crash dumps
-/Build/
+/Build/**/*_BackUpThisFolder_ButDontShipItWithYourGame/
 *.apk
 *.aab
 *.unitypackage

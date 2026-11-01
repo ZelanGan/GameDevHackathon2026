@@ -151,6 +151,11 @@ namespace NightTrolleybus.EditorTools
             GameObject pickup = CreateArt(objectName, null, position, $"Item_{item.Id}", 3);
             AddFittedCollider(pickup, true);
             Wire(pickup.AddComponent<ItemPickup>(), ("item", item));
+
+            // Сяйво теж освітлюється Вогником, тож лут за стіною воно не видає.
+            GameObject glow = CreateArt("Glow", pickup.transform, Vector3.zero, "MenuGlow", 2, new Color(1f, 0.85f, 0.35f, 0.95f));
+            glow.transform.localScale = Vector3.one * 0.55f;
+            Wire(pickup.AddComponent<LootHighlight>(), ("glow", glow.transform));
             return pickup;
         }
 
@@ -307,10 +312,11 @@ namespace NightTrolleybus.EditorTools
             SetFloat(weapon, "damage", damage);
             SetFloat(weapon, "cooldown", cooldown);
             SetFloat(weapon, "range", range);
+            Wire(weapon, ("sprite", PixelArt.Get(assetName)));
             return weapon;
         }
 
-        public static WeaponData Pipe => GetOrCreateWeapon("Weapon_Pipe", "pipe", "Обрізок труби", 25f, 0.4f, 1.4f);
+        public static WeaponData Bat => GetOrCreateWeapon("Weapon_Bat", "bat", "Біта", 25f, 0.4f, 1.4f);
         public static WeaponData Crowbar => GetOrCreateWeapon("Weapon_Crowbar", "crowbar", "Лом", 40f, 0.5f, 1.6f);
         public static WeaponData FireAxe => GetOrCreateWeapon("Weapon_FireAxe", "fire_axe", "Пожежна сокира", 60f, 0.7f, 1.9f);
 

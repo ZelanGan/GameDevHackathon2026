@@ -6,27 +6,15 @@ using UnityEngine.UI;
 
 namespace NightTrolleybus.UI
 {
-    /// <summary>Частина інтерфейсу для салону: несправності й ремонт.</summary>
+    /// <summary>Частина інтерфейсу для салону: несправності.</summary>
     public class BusHudView : MonoBehaviour
     {
         [SerializeField] private VoidEventChannel faultsChanged;
-        [SerializeField] private StringEventChannel repairTextChanged;
         [SerializeField] private Text faultsLabel;
-        [SerializeField] private Text repairLabel;
 
-        private void OnEnable()
-        {
-            faultsChanged.Raised += OnFaultsChanged;
-            repairTextChanged.Raised += OnRepairTextChanged;
-        }
+        private void OnEnable() => faultsChanged.Raised += OnFaultsChanged;
 
-        private void OnDisable()
-        {
-            faultsChanged.Raised -= OnFaultsChanged;
-            repairTextChanged.Raised -= OnRepairTextChanged;
-        }
-
-        private void OnRepairTextChanged(string text) => repairLabel.text = text;
+        private void OnDisable() => faultsChanged.Raised -= OnFaultsChanged;
 
         private void OnFaultsChanged()
         {

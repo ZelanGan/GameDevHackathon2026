@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.Items.ItemData
   id: ticket
   displayName: "\u0421\u0442\u0430\u0440\u0438\u0439 \u043A\u0432\u0438\u0442\u043E\u043A"
-  icon: {fileID: 8218355763860398801, guid: f36bc5a9a6268b74dbfec60b05ff4a28, type: 3}
+  icon: {fileID: 21300000, guid: f36bc5a9a6268b74dbfec60b05ff4a28, type: 3}
   effects: []

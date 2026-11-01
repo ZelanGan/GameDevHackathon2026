@@ -58,6 +58,7 @@ namespace NightTrolleybus.EditorTools
             { "Top_Checkout", TopCheckout },
             { "Top_Shelf", TopShelf },
             { "Top_AmmoBox", TopAmmoBox },
+            { "Top_AmmoBox_Open", TopAmmoBoxOpen },
             { "Top_Target", TopTarget },
             { "Top_GunRack", TopGunRack },
             { "Decal_Oil", () => Stain(40, 30, new Color(0.03f, 0.03f, 0.04f, 0.6f)) },
@@ -86,7 +87,6 @@ namespace NightTrolleybus.EditorTools
             { "CabinDoor_Open", CabinDoorOpen },
             { "Switch", Switch },
             { "DoorLever", DoorLever },
-            { "ExitDoor", ExitDoor },
             { "RepairPanel", RepairPanel },
             { "Crate", Crate },
             { "Charger", Charger },
@@ -98,7 +98,6 @@ namespace NightTrolleybus.EditorTools
             { "Building_A", () => Building(1, 96, 160) },
             { "Building_B", () => Building(2, 128, 192) },
             { "Building_C", () => Building(3, 96, 224) },
-            { "Swing", Swing },
             { "MenuBackground", MenuBackground },
             { "MenuGlow", MenuGlow },
             { "Top_Player_Idle", () => TopPerson(0) },
@@ -109,8 +108,12 @@ namespace NightTrolleybus.EditorTools
             { "Top_Player_Back_Walk_B", () => TopPersonBack(-1) },
             { "Top_Shade_A", () => TopShade(0) },
             { "Top_Shade_B", () => TopShade(1) },
-            { "Top_Floor", TopFloor },
-            { "Top_Wall", TopWall },
+            { "Top_Floor_Depot", TopFloorDepot },
+            { "Top_Wall_Depot", TopWallDepot },
+            { "Top_Floor_Market", TopFloorMarket },
+            { "Top_Wall_Market", TopWallMarket },
+            { "Top_Floor_GunShop", TopFloorGunShop },
+            { "Top_Wall_GunShop", TopWallGunShop },
             { "Top_Crate", TopCrate },
             { "Top_Counter", TopCounter },
             { "Top_Charger", TopCharger },
@@ -259,31 +262,53 @@ namespace NightTrolleybus.EditorTools
 
         private static Canvas Match()
         {
-            var c = new Canvas(4, 14);
-            c.Rect(1, 0, 2, 11, C(214, 176, 120));
-            c.Rect(0, 11, 4, 3, C(200, 60, 40));
+            // Коробка сірників: етикетка з вогником і сірник, що стирчить зверху.
+            var c = new Canvas(18, 18);
+            c.Rect(4, 10, 2, 5, C(226, 190, 130));
+            c.Rect(3, 15, 4, 3, C(220, 60, 40));
+            c.Rect(9, 10, 2, 3, C(226, 190, 130));
+            c.Rect(8, 13, 4, 2, C(220, 60, 40));
+            c.Rect(0, 0, 18, 11, C(70, 40, 30));
+            c.Rect(1, 1, 16, 9, C(196, 70, 48));
+            c.Rect(0, 0, 18, 2, C(46, 36, 34));
+            c.Rect(7, 3, 4, 5, C(250, 190, 70));
+            c.Rect(8, 3, 2, 2, C(255, 240, 170));
             return c;
         }
 
         private static Canvas Battery()
         {
-            var c = new Canvas(14, 16);
-            c.Rect(0, 0, 14, 12, C(50, 70, 92));
-            c.Rect(0, 8, 14, 4, C(90, 150, 200));
-            c.Rect(2, 12, 3, 2, Metal);
-            c.Rect(9, 12, 3, 2, Metal);
-            c.Rect(5, 2, 4, 4, C(230, 220, 90));
+            // Акумулятор: дві клеми, плюс і мінус та блискавка на корпусі.
+            var c = new Canvas(20, 18);
+            c.Rect(0, 0, 20, 15, C(36, 48, 66));
+            c.Rect(1, 1, 18, 13, C(62, 88, 116));
+            c.Rect(1, 11, 18, 3, C(110, 170, 220));
+            c.Rect(3, 15, 4, 3, C(220, 70, 56));
+            c.Rect(13, 15, 4, 3, Metal);
+            c.Rect(3, 12, 3, 1, C(255, 240, 230));
+            c.Rect(4, 11, 1, 3, C(255, 240, 230));
+            c.Rect(14, 12, 3, 1, C(20, 24, 32));
+            c.Rect(10, 6, 3, 4, C(250, 216, 70));
+            c.Rect(8, 5, 4, 2, C(250, 216, 70));
+            c.Rect(7, 2, 3, 3, C(250, 216, 70));
             return c;
         }
 
         private static Canvas Ticket()
         {
-            var c = new Canvas(14, 8);
-            c.Rect(0, 0, 14, 8, C(226, 212, 130));
-            c.Rect(2, 5, 8, 1, WoodDark);
-            c.Rect(2, 3, 5, 1, WoodDark);
-            c.Set(12, 0, Clear);
-            c.Set(12, 7, Clear);
+            // Квиток: рожевий корінець із перфорацією, номер і маленький тролейбус.
+            var c = new Canvas(20, 12);
+            c.Rect(0, 0, 20, 12, C(120, 96, 50));
+            c.Rect(1, 1, 18, 10, C(240, 224, 140));
+            c.Rect(1, 1, 4, 10, C(226, 120, 120));
+            for (int y = 1; y < 11; y += 2)
+                c.Set(5, y, C(120, 96, 50));
+            c.Rect(7, 8, 10, 1, WoodDark);
+            c.Rect(8, 3, 8, 4, C(60, 110, 150));
+            c.Rect(9, 5, 2, 1, C(220, 240, 250));
+            c.Rect(12, 5, 2, 1, C(220, 240, 250));
+            c.Set(0, 5, Clear);
+            c.Set(19, 5, Clear);
             return c;
         }
 
@@ -447,16 +472,6 @@ namespace NightTrolleybus.EditorTools
             return c;
         }
 
-        private static Canvas ExitDoor()
-        {
-            var c = new Canvas(20, 52);
-            c.Rect(0, 0, 20, 52, C(70, 230, 110));
-            c.Rect(3, 3, 14, 46, C(30, 110, 60));
-            c.Rect(5, 28, 10, 18, C(170, 255, 190));
-            c.Rect(13, 20, 3, 3, Color.white);
-            return c;
-        }
-
         // Майже білий рисунок: станція фарбується в сірий або червоний за станом несправності.
         private static Canvas RepairPanel()
         {
@@ -570,18 +585,6 @@ namespace NightTrolleybus.EditorTools
                     Color window = roll == 0 ? C(255, 214, 120) : C(120, 120, 130);
                     c.Rect(x, y, 12, 14, window);
                 }
-            }
-
-            return c;
-        }
-
-        private static Canvas Swing()
-        {
-            var c = new Canvas(45, 12);
-            for (int x = 0; x < 45; x++)
-            {
-                int height = 2 + (x * 9 / 45);
-                c.Rect(x, 6 - height / 2, 1, height, new Color(1f, 1f, 1f, 0.5f + x / 90f));
             }
 
             return c;
@@ -740,138 +743,248 @@ namespace NightTrolleybus.EditorTools
             return c;
         }
 
+        // Металева бочка: кришка зверху, обручі й іржа.
         private static Canvas TopBarrel()
         {
-            var c = new Canvas(26, 26);
-            c.Ellipse(13, 13, 12, 12, C(70, 62, 52));
-            c.Ellipse(13, 13, 10, 10, C(112, 72, 44));
-            c.Ellipse(13, 13, 6, 6, C(84, 54, 34));
-            c.Rect(16, 15, 3, 3, C(150, 104, 62));
+            var c = new Canvas(28, 34);
+            c.Rect(2, 2, 24, 28, C(70, 96, 110));
+            c.Rect(2, 2, 5, 28, C(46, 64, 76));
+            c.Rect(20, 2, 3, 28, C(104, 136, 150));
+            c.Rect(2, 8, 24, 2, C(36, 48, 58));
+            c.Rect(2, 20, 24, 2, C(36, 48, 58));
+            c.Rect(9, 12, 7, 6, C(226, 180, 50));
+            c.Rect(11, 13, 3, 3, C(30, 28, 30));
+            c.Ellipse(14, 2, 12, 2, C(46, 64, 76));
+            c.Ellipse(14, 29, 12, 4, C(104, 136, 150));
+            c.Ellipse(14, 29, 9, 2, C(58, 80, 94));
+            c.Rect(19, 29, 3, 2, C(36, 48, 58));
             return c;
         }
 
+        // Дерев'яна котушка, намотана помаранчевим кабелем, з кінцем, що звисає.
         private static Canvas TopSpool()
         {
-            var c = new Canvas(28, 28);
-            c.Ellipse(14, 14, 13, 13, Wood);
-            c.Ellipse(14, 14, 10, 10, C(170, 96, 46));
-            c.Ellipse(14, 14, 8, 8, C(132, 72, 36));
-            c.Ellipse(14, 14, 3, 3, WoodDark);
+            var c = new Canvas(36, 32);
+            c.Rect(5, 7, 26, 18, C(214, 110, 40));
+            for (int y = 8; y < 25; y += 3)
+                c.Rect(5, y, 26, 1, C(150, 70, 24));
+            c.Ellipse(5, 16, 5, 15, C(130, 92, 56));
+            c.Ellipse(5, 16, 2, 5, C(70, 48, 28));
+            c.Rect(29, 1, 4, 30, C(130, 92, 56));
+            c.Rect(33, 1, 2, 30, C(84, 58, 34));
+            c.Rect(25, 1, 2, 7, C(214, 110, 40));
             return c;
         }
 
+        // Стос із трьох шин: видно протектор збоку й отвір зверху.
         private static Canvas TopTires()
         {
-            var c = new Canvas(30, 30);
-            foreach ((int x, int y) in new[] { (10, 10), (20, 19) })
+            var c = new Canvas(36, 36);
+            for (int level = 0; level < 3; level++)
             {
-                c.Ellipse(x, y, 9, 9, C(30, 30, 34));
-                c.Ellipse(x, y, 7, 7, C(50, 50, 56));
-                c.Ellipse(x, y, 3, 3, C(14, 14, 16));
+                int y = 1 + level * 9;
+                c.Rect(2, y + 3, 32, 8, C(30, 30, 34));
+                c.Ellipse(18, y + 3, 16, 3, C(30, 30, 34));
+                for (int x = 4; x < 33; x += 4)
+                    c.Rect(x, y + 3, 2, 8, C(58, 58, 64));
+                c.Rect(2, y + 10, 32, 1, C(66, 66, 72));
             }
 
+            c.Ellipse(18, 29, 16, 5, C(44, 44, 50));
+            c.Ellipse(18, 29, 8, 2, C(12, 12, 14));
             return c;
         }
 
+        // Верстат: стільниця, лещата, молоток і ключ зверху, шухляди й ніжки спереду.
         private static Canvas TopWorkbench()
         {
-            var c = new Canvas(56, 28);
-            c.Rect(0, 0, 56, 28, WoodDark);
-            c.Rect(2, 2, 52, 24, Wood);
-            c.Rect(8, 16, 14, 4, Metal);
-            c.Rect(12, 8, 3, 12, MetalDark);
-            c.Rect(32, 8, 12, 10, C(120, 44, 36));
-            c.Rect(34, 12, 8, 2, Metal);
+            var c = new Canvas(64, 40);
+            c.Rect(3, 0, 5, 14, C(58, 40, 26));
+            c.Rect(56, 0, 5, 14, C(58, 40, 26));
+            c.Rect(14, 4, 36, 16, C(100, 72, 46));
+            c.Rect(16, 6, 15, 5, C(136, 100, 64));
+            c.Rect(33, 6, 15, 5, C(136, 100, 64));
+            c.Rect(16, 13, 15, 5, C(136, 100, 64));
+            c.Rect(33, 13, 15, 5, C(136, 100, 64));
+            for (int y = 8; y < 16; y += 7)
+            {
+                c.Rect(22, y, 3, 1, Metal);
+                c.Rect(39, y, 3, 1, Metal);
+            }
+
+            c.Rect(0, 18, 64, 4, C(92, 62, 36));
+            c.Rect(0, 22, 64, 8, C(168, 124, 78));
+            c.Rect(5, 28, 12, 7, C(70, 90, 110));
+            c.Rect(5, 34, 12, 2, Metal);
+            c.Rect(17, 30, 4, 2, Metal);
+            c.Rect(29, 24, 2, 11, C(120, 80, 44));
+            c.Rect(25, 34, 10, 4, MetalDark);
+            c.Rect(42, 25, 14, 2, Metal);
+            c.Rect(54, 24, 4, 5, Metal);
             return c;
         }
 
+        // Магазинний візок збоку: сітчастий кошик, ручка ліворуч, колеса й покупки всередині.
         private static Canvas TopCart()
         {
-            var c = new Canvas(34, 24);
-            c.Rect(0, 8, 6, 3, MetalDark);
-            c.Rect(5, 1, 28, 22, MetalDark);
-            c.Rect(7, 3, 24, 18, C(38, 40, 46));
-            for (int x = 11; x < 31; x += 5)
-                c.Rect(x, 3, 1, 18, Metal);
-            for (int y = 7; y < 21; y += 5)
-                c.Rect(7, y, 24, 1, Metal);
-            c.Rect(16, 6, 9, 7, C(150, 92, 54));
+            Color steel = C(176, 182, 190);
+            Color dark = C(84, 88, 96);
+            var c = new Canvas(44, 36);
+            c.Rect(1, 30, 9, 3, C(200, 50, 44));
+            c.Rect(8, 12, 2, 20, steel);
+            c.Rect(12, 28, 28, 6, C(226, 90, 70));
+            c.Rect(26, 26, 9, 8, C(240, 200, 90));
+            c.Rect(16, 26, 8, 6, C(90, 170, 110));
+            c.Rect(10, 12, 32, 2, steel);
+            c.Rect(10, 26, 32, 2, steel);
+            for (int y = 16; y < 26; y += 4)
+                c.Rect(11 + (26 - y) / 4, y, 30 - (26 - y) / 2, 1, dark);
+            for (int x = 14; x < 42; x += 5)
+                c.Rect(x, 14, 1, 13, dark);
+            c.Rect(40, 14, 2, 13, steel);
+            c.Rect(10, 8, 30, 2, steel);
+            c.Rect(14, 8, 2, 4, steel);
+            c.Rect(34, 8, 2, 4, steel);
+            c.Ellipse(15, 3, 3, 3, C(24, 24, 28));
+            c.Ellipse(35, 3, 3, 3, C(24, 24, 28));
             return c;
         }
 
+        // Гора картонних коробок зі скотчем і стрілками «цей бік угору».
         private static Canvas TopBoxPile()
         {
-            var c = new Canvas(40, 32);
-            Color tape = C(204, 180, 128);
-            foreach ((int x, int y, int w, int h) in new[] { (0, 0, 22, 18), (20, 3, 20, 16), (9, 15, 20, 17) })
+            var c = new Canvas(44, 40);
+            foreach ((int x, int y, int w, int h) in new[] { (0, 0, 22, 20), (22, 0, 22, 20), (10, 20, 24, 20) })
             {
-                c.Rect(x, y, w, h, C(112, 78, 46));
-                c.Rect(x + 1, y + 1, w - 2, h - 2, C(158, 114, 70));
-                c.Rect(x + w / 2 - 1, y + 1, 3, h - 2, tape);
+                c.Rect(x, y, w, h, C(92, 62, 34));
+                c.Rect(x + 1, y + 1, w - 2, h - 2, C(190, 142, 88));
+                c.Rect(x + 1, y + h - 5, w - 2, 4, C(214, 170, 112));
+                c.Rect(x + w / 2 - 2, y + 1, 4, h - 2, C(226, 208, 160));
+                c.Rect(x + 4, y + 4, 1, 6, C(92, 62, 34));
+                c.Rect(x + 3, y + 8, 3, 1, C(92, 62, 34));
             }
 
             return c;
         }
 
+        // Каса: чорна стрічка з товаром, апарат із зеленим екраном і кнопками.
         private static Canvas TopCheckout()
         {
-            var c = new Canvas(60, 26);
-            c.Rect(0, 0, 60, 26, C(60, 60, 70));
-            c.Rect(2, 2, 56, 22, C(96, 100, 112));
-            c.Rect(4, 8, 34, 10, C(26, 26, 30));
-            for (int x = 8; x < 38; x += 6)
-                c.Rect(x, 8, 1, 10, C(58, 58, 64));
-            c.Rect(44, 7, 11, 12, C(40, 44, 54));
-            c.Rect(46, 12, 7, 5, C(120, 200, 150));
+            var c = new Canvas(64, 40);
+            c.Rect(0, 0, 64, 18, C(120, 124, 136));
+            c.Rect(0, 16, 64, 2, C(150, 154, 166));
+            c.Rect(2, 18, 60, 12, C(70, 72, 82));
+            c.Rect(3, 20, 38, 8, C(26, 26, 30));
+            for (int x = 6; x < 40; x += 6)
+                c.Rect(x, 20, 1, 8, C(62, 62, 68));
+            c.Rect(8, 24, 7, 7, C(220, 80, 66));
+            c.Rect(22, 24, 6, 9, C(90, 170, 200));
+            c.Rect(44, 18, 18, 10, C(46, 50, 60));
+            c.Rect(45, 28, 16, 12, C(32, 36, 44));
+            c.Rect(47, 31, 12, 7, C(120, 230, 160));
+            for (int x = 46; x < 60; x += 4)
+                c.Rect(x, 22, 2, 2, C(210, 210, 200));
             return c;
         }
 
+        // Полиця магазину: дерев'яні полички з рядами банок і пляшок.
         private static Canvas TopShelf()
         {
+            Color[] goods = { C(214, 70, 60), C(70, 150, 210), C(236, 196, 80), C(90, 180, 110) };
             var c = new Canvas(32, 32);
-            Color[] goods = { C(180, 70, 60), C(70, 130, 170), C(200, 170, 80), C(90, 150, 90) };
-            c.Rect(0, 0, 32, 32, C(70, 66, 74));
-            c.Rect(3, 0, 26, 32, C(110, 106, 114));
-            for (int y = 2; y < 32; y += 10)
+            c.Rect(0, 0, 32, 32, C(62, 44, 32));
+            c.Rect(2, 0, 28, 32, C(96, 72, 52));
+            for (int row = 0; row < 2; row++)
             {
-                c.Rect(6, y, 8, 7, goods[y % 4]);
-                c.Rect(18, y, 8, 7, goods[(y + 2) % 4]);
+                int y = row * 16;
+                c.Rect(0, y, 32, 3, C(150, 112, 74));
+                for (int i = 0; i < 4; i++)
+                {
+                    int x = 3 + i * 7;
+                    Color good = goods[(i + row * 2) % goods.Length];
+                    c.Rect(x, y + 3, 5, 9, good);
+                    c.Rect(x + 1, y + 12, 3, 2, good);
+                    c.Rect(x, y + 6, 5, 2, C(240, 234, 216));
+                }
             }
 
             return c;
         }
 
+        // Армійський ящик із набоями: зачинений, із ручкою, замком і малюнком патрона.
         private static Canvas TopAmmoBox()
         {
-            var c = new Canvas(28, 20);
-            c.Rect(0, 0, 28, 20, C(44, 56, 38));
-            c.Rect(2, 2, 24, 16, C(78, 96, 62));
-            c.Rect(2, 9, 24, 2, C(44, 56, 38));
-            c.Rect(11, 5, 6, 10, C(196, 170, 84));
-            return c;
-        }
-
-        private static Canvas TopTarget()
-        {
-            var c = new Canvas(28, 28);
-            c.Ellipse(14, 14, 13, 13, C(226, 220, 204));
-            c.Ellipse(14, 14, 10, 10, C(170, 50, 42));
-            c.Ellipse(14, 14, 7, 7, C(226, 220, 204));
-            c.Ellipse(14, 14, 3, 3, C(170, 50, 42));
-            return c;
-        }
-
-        private static Canvas TopGunRack()
-        {
-            var c = new Canvas(60, 18);
-            c.Rect(0, 0, 60, 18, WoodDark);
-            c.Rect(2, 2, 56, 14, Wood);
-            for (int x = 6; x < 54; x += 12)
+            Color olive = C(84, 104, 62);
+            Color dark = C(44, 56, 34);
+            Color brass = C(220, 180, 80);
+            var c = new Canvas(36, 28);
+            c.Rect(0, 0, 36, 20, dark);
+            c.Rect(1, 1, 34, 18, olive);
+            c.Rect(0, 18, 36, 6, dark);
+            c.Rect(1, 19, 34, 4, C(112, 134, 82));
+            c.Rect(13, 24, 10, 2, MetalDark);
+            c.Rect(13, 24, 2, 4, MetalDark);
+            c.Rect(21, 24, 2, 4, MetalDark);
+            c.Rect(16, 15, 4, 5, Metal);
+            for (int x = 6; x < 30; x += 9)
             {
-                c.Rect(x, 4, 3, 10, C(40, 40, 46));
-                c.Rect(x - 1, 4, 5, 3, C(92, 62, 38));
+                c.Rect(x, 4, 4, 7, brass);
+                c.Rect(x + 1, 11, 2, 2, C(170, 110, 60));
             }
 
+            return c;
+        }
+
+        // Той самий ящик відкритий і порожній: кришка відкинута назад.
+        private static Canvas TopAmmoBoxOpen()
+        {
+            Color olive = C(84, 104, 62);
+            Color dark = C(44, 56, 34);
+            var c = new Canvas(36, 28);
+            c.Rect(0, 0, 36, 16, dark);
+            c.Rect(1, 1, 34, 14, olive);
+            c.Rect(3, 10, 30, 6, C(18, 22, 16));
+            c.Rect(0, 16, 36, 12, dark);
+            c.Rect(1, 17, 34, 10, C(112, 134, 82));
+            c.Rect(16, 19, 4, 3, Metal);
+            return c;
+        }
+
+        // Мішень для стрільби на дерев'яній підставці, з дірками від куль.
+        private static Canvas TopTarget()
+        {
+            var c = new Canvas(32, 40);
+            c.Rect(8, 0, 3, 12, C(92, 62, 36));
+            c.Rect(21, 0, 3, 12, C(92, 62, 36));
+            c.Rect(4, 0, 24, 2, C(70, 48, 28));
+            c.Ellipse(16, 24, 15, 15, C(236, 230, 214));
+            c.Ellipse(16, 24, 11, 11, C(190, 44, 38));
+            c.Ellipse(16, 24, 7, 7, C(236, 230, 214));
+            c.Ellipse(16, 24, 3, 3, C(190, 44, 38));
+            c.Rect(10, 30, 2, 2, C(20, 20, 22));
+            c.Rect(21, 20, 2, 2, C(20, 20, 22));
+            return c;
+        }
+
+        // Стійка зі зброєю: дві рушниці й сокира на дерев'яному щиті.
+        private static Canvas TopGunRack()
+        {
+            Color steel = C(58, 60, 68);
+            Color stock = C(150, 96, 52);
+            var c = new Canvas(64, 36);
+            c.Rect(0, 0, 64, 36, C(62, 42, 28));
+            c.Rect(2, 2, 60, 32, C(112, 78, 50));
+            c.Rect(2, 30, 60, 2, C(84, 58, 36));
+            for (int x = 8; x < 40; x += 18)
+            {
+                c.Rect(x, 16, 3, 16, steel);
+                c.Rect(x - 1, 5, 6, 12, stock);
+                c.Rect(x + 3, 16, 2, 4, steel);
+            }
+
+            c.Rect(50, 4, 3, 26, stock);
+            c.Rect(44, 22, 13, 8, C(190, 44, 38));
+            c.Rect(42, 24, 3, 5, Metal);
             return c;
         }
 
@@ -934,8 +1047,12 @@ namespace NightTrolleybus.EditorTools
         {
             var c = new Canvas(20, 20);
             Color brass = C(206, 168, 76);
-            foreach ((int x, int y) in new[] { (3, 4), (8, 12), (13, 6), (15, 15), (6, 17) })
-                c.Rect(x, y, 3, 2, brass);
+            foreach ((int x, int y) in new[] { (2, 4), (8, 12), (13, 6), (14, 15), (3, 16) })
+            {
+                c.Rect(x, y, 4, 2, brass);
+                c.Rect(x + 3, y, 1, 2, C(120, 90, 40));
+            }
+
             return c;
         }
 
@@ -1117,70 +1234,172 @@ namespace NightTrolleybus.EditorTools
             return c;
         }
 
-        private static Canvas TopFloor()
+        // Депо: сірий бетон зі швами й плямами мастила.
+        private static Canvas TopFloorDepot()
         {
             var c = new Canvas(32, 32);
-            c.Rect(0, 0, 32, 32, C(150, 146, 140));
-            c.Rect(0, 0, 32, 1, C(110, 106, 100));
-            c.Rect(0, 0, 1, 32, C(110, 106, 100));
-            c.Rect(7, 11, 3, 2, C(128, 124, 118));
-            c.Rect(21, 22, 4, 2, C(128, 124, 118));
-            c.Rect(25, 6, 2, 3, C(170, 166, 160));
+            c.Rect(0, 0, 32, 32, C(112, 114, 116));
+            c.Rect(0, 0, 32, 1, C(78, 80, 84));
+            c.Rect(0, 0, 1, 32, C(78, 80, 84));
+            c.Rect(6, 10, 4, 2, C(92, 94, 98));
+            c.Rect(20, 22, 5, 3, C(86, 86, 88));
+            c.Rect(25, 6, 2, 2, C(132, 134, 136));
+            c.Rect(12, 26, 2, 1, C(132, 134, 136));
             return c;
         }
 
-        private static Canvas TopWall()
+        // Депо: профнастил із жовто-чорною смугою небезпеки.
+        private static Canvas TopWallDepot()
         {
+            Color steel = C(84, 96, 108);
+            Color groove = C(58, 68, 78);
             var c = new Canvas(32, 32);
-            c.Rect(0, 0, 32, 32, C(96, 76, 72));
-            c.Rect(0, 0, 32, 2, C(60, 48, 46));
-            c.Rect(0, 30, 32, 2, C(140, 118, 110));
-            c.Rect(0, 15, 32, 1, C(60, 48, 46));
-            c.Rect(10, 16, 1, 14, C(60, 48, 46));
-            c.Rect(22, 2, 1, 13, C(60, 48, 46));
+            c.Rect(0, 0, 32, 32, steel);
+            for (int x = 3; x < 32; x += 6)
+                c.Rect(x, 0, 2, 32, groove);
+            c.Rect(0, 12, 32, 8, C(226, 180, 50));
+            for (int x = 0; x < 32; x += 8)
+                c.Rect(x, 12, 4, 8, C(30, 28, 30));
             return c;
         }
 
+        // Супермаркет: шахова плитка, світла й бірюзова.
+        private static Canvas TopFloorMarket()
+        {
+            Color light = C(206, 208, 198);
+            Color tint = C(112, 170, 164);
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 16, 16, light);
+            c.Rect(16, 16, 16, 16, light);
+            c.Rect(16, 0, 16, 16, tint);
+            c.Rect(0, 16, 16, 16, tint);
+            c.Rect(0, 15, 32, 1, C(150, 156, 150));
+            c.Rect(15, 0, 1, 32, C(150, 156, 150));
+            return c;
+        }
+
+        // Супермаркет: біла кахельна стіна з кольоровою смугою.
+        private static Canvas TopWallMarket()
+        {
+            Color joint = C(176, 178, 174);
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(226, 226, 218));
+            c.Rect(0, 0, 32, 1, joint);
+            c.Rect(0, 8, 32, 1, joint);
+            c.Rect(0, 24, 32, 1, joint);
+            c.Rect(0, 0, 1, 32, joint);
+            c.Rect(16, 0, 1, 32, joint);
+            c.Rect(0, 12, 32, 8, C(44, 134, 136));
+            return c;
+        }
+
+        // Магазин зброї: темні дерев'яні дошки.
+        private static Canvas TopFloorGunShop()
+        {
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(92, 60, 40));
+            c.Rect(0, 16, 32, 16, C(80, 52, 34));
+            c.Rect(0, 0, 32, 1, C(46, 30, 20));
+            c.Rect(0, 16, 32, 1, C(46, 30, 20));
+            c.Rect(10, 0, 1, 16, C(46, 30, 20));
+            c.Rect(24, 16, 1, 16, C(46, 30, 20));
+            c.Rect(18, 7, 6, 1, C(70, 46, 30));
+            c.Rect(4, 25, 7, 1, C(66, 42, 26));
+            return c;
+        }
+
+        // Магазин зброї: темно-червона цегла.
+        private static Canvas TopWallGunShop()
+        {
+            Color mortar = C(46, 30, 30);
+            var c = new Canvas(32, 32);
+            c.Rect(0, 0, 32, 32, C(122, 48, 40));
+            c.Rect(0, 0, 32, 2, mortar);
+            c.Rect(0, 15, 32, 2, mortar);
+            c.Rect(0, 30, 32, 2, mortar);
+            c.Rect(10, 2, 2, 13, mortar);
+            c.Rect(26, 2, 2, 13, mortar);
+            c.Rect(2, 17, 2, 13, mortar);
+            c.Rect(18, 17, 2, 13, mortar);
+            return c;
+        }
+
+        // Дерев'яний ящик із хрестовими планками.
         private static Canvas TopCrate()
         {
-            var c = new Canvas(48, 48);
-            c.Rect(0, 0, 48, 48, WoodDark);
-            c.Rect(3, 3, 42, 42, Wood);
-            for (int y = 11; y < 45; y += 8)
-                c.Rect(3, y, 42, 1, WoodDark);
-            c.Rect(3, 3, 5, 42, WoodDark);
-            c.Rect(40, 3, 5, 42, WoodDark);
+            Color plank = C(166, 118, 70);
+            Color edge = C(92, 62, 36);
+            var c = new Canvas(36, 36);
+            c.Rect(0, 0, 36, 36, edge);
+            c.Rect(2, 2, 32, 32, plank);
+            for (int y = 9; y < 34; y += 8)
+                c.Rect(2, y, 32, 1, C(130, 90, 52));
+            for (int i = 0; i < 28; i++)
+            {
+                c.Rect(4 + i, 4 + i, 3, 2, edge);
+                c.Rect(4 + i, 30 - i, 3, 2, edge);
+            }
+
+            c.Rect(0, 0, 36, 4, edge);
+            c.Rect(0, 32, 36, 4, edge);
+            c.Rect(0, 0, 4, 36, edge);
+            c.Rect(32, 0, 4, 36, edge);
             return c;
         }
 
+        // Прилавок магазину: скляна вітрина зверху, дерево спереду й табличка з ціною.
         private static Canvas TopCounter()
         {
-            var c = new Canvas(38, 38);
-            c.Rect(0, 0, 38, 38, WoodDark);
-            c.Rect(2, 2, 34, 34, Wood);
-            c.Rect(6, 17, 26, 4, Metal);
-            c.Rect(26, 12, 5, 14, MetalDark);
+            var c = new Canvas(48, 40);
+            c.Rect(0, 0, 48, 24, C(84, 56, 34));
+            c.Rect(2, 2, 44, 20, C(132, 92, 56));
+            for (int x = 10; x < 44; x += 8)
+                c.Rect(x, 2, 1, 20, C(100, 68, 40));
+            c.Rect(0, 22, 48, 3, C(190, 150, 96));
+            c.Rect(3, 25, 42, 15, C(60, 86, 100));
+            c.Rect(5, 27, 38, 11, C(120, 170, 190));
+            c.Rect(8, 30, 20, 3, MetalDark);
+            c.Rect(26, 29, 5, 6, Metal);
+            c.Rect(14, 6, 20, 10, C(236, 226, 190));
+            c.Rect(17, 9, 14, 1, C(90, 70, 50));
+            c.Rect(17, 12, 10, 1, C(90, 70, 50));
             return c;
         }
 
+        // Зарядна шафа: металевий корпус, блискавка, шкала й кабель.
         private static Canvas TopCharger()
         {
-            var c = new Canvas(32, 32);
-            c.Rect(0, 0, 32, 32, C(70, 96, 130));
-            c.Rect(4, 4, 24, 24, C(30, 44, 60));
-            c.Rect(14, 8, 5, 8, C(230, 220, 90));
-            c.Rect(11, 15, 6, 8, C(230, 220, 90));
+            var c = new Canvas(36, 44);
+            c.Rect(2, 0, 32, 44, C(44, 60, 84));
+            c.Rect(4, 2, 28, 40, C(70, 96, 130));
+            c.Rect(7, 30, 22, 9, C(20, 28, 40));
+            for (int x = 9; x < 27; x += 4)
+                c.Rect(x, 32, 2, 5, C(90, 220, 240));
+            Color bolt = C(250, 216, 70);
+            c.Rect(18, 22, 6, 5, bolt);
+            c.Rect(14, 17, 9, 5, bolt);
+            c.Rect(16, 12, 7, 5, bolt);
+            c.Rect(13, 6, 6, 6, bolt);
+            c.Rect(0, 4, 2, 8, C(30, 30, 34));
             return c;
         }
 
+        // Двері тролейбуса, куди треба повернутися: червоні стулки зі склом і зелена стрілка ліворуч.
         private static Canvas TopDoor()
         {
+            Color panel = C(150, 48, 42);
+            Color arrow = C(90, 240, 130);
             var c = new Canvas(32, 64);
-            c.Rect(0, 0, 32, 64, C(124, 62, 50));
-            c.Rect(0, 0, 32, 5, C(226, 204, 150));
-            c.Rect(0, 59, 32, 5, C(226, 204, 150));
-            c.Rect(24, 8, 8, 48, C(80, 230, 130));
-            c.Rect(4, 12, 16, 40, C(86, 84, 84));
+            c.Rect(0, 0, 32, 64, C(50, 44, 46));
+            c.Rect(2, 2, 13, 60, panel);
+            c.Rect(17, 2, 13, 60, panel);
+            c.Rect(4, 34, 9, 24, C(44, 60, 84));
+            c.Rect(19, 34, 9, 24, C(44, 60, 84));
+            c.Rect(12, 24, 2, 7, Metal);
+            c.Rect(18, 24, 2, 7, Metal);
+            c.Rect(8, 11, 18, 4, arrow);
+            for (int i = 0; i < 6; i++)
+                c.Rect(8 - i, 8 + i, 1, 10 - i * 2, arrow);
             return c;
         }
 

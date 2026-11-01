@@ -1,16 +1,16 @@
 using NightTrolleybus.Core;
-using NightTrolleybus.Core.Events;
 using NightTrolleybus.Player;
+using NightTrolleybus.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace NightTrolleybus.Vehicle.Repair
 {
-    /// <summary>Запускає міні-гру, передає її текст в інтерфейс і усуває несправність після успіху.</summary>
+    /// <summary>Запускає міні-гру, показує її у вікні ремонту й усуває несправність після успіху.</summary>
     public class RepairHost : MonoBehaviour
     {
         [SerializeField] private PlayerMotor2D playerMotor;
-        [SerializeField] private StringEventChannel repairTextChanged;
+        [SerializeField] private RepairView view;
         [Tooltip("Скільки енергії повертає успішний ремонт")]
         [SerializeField] private float powerOnRepair = 10f;
 
@@ -29,6 +29,7 @@ namespace NightTrolleybus.Vehicle.Repair
 
             fault = faultToRepair;
             minigame = Create(faultToRepair);
+            view.Show(minigame, Title(faultToRepair), Leave);
             GameContext.Audio?.Play(SoundId.Lock);
             playerMotor.SetLocked(true);
         }
@@ -46,6 +47,19 @@ namespace NightTrolleybus.Vehicle.Repair
             }
         }
 
+        private static string Title(FaultType faultToRepair)
+        {
+            switch (faultToRepair)
+            {
+                case FaultType.PolesOff:
+                    return Loc.T("Підключити штанги");
+                case FaultType.FuseBlown:
+                    return Loc.T("Замінити запобіжник");
+                default:
+                    return Loc.T("З'єднати проводи");
+            }
+        }
+
         private void Update()
         {
             if (!IsOpen)
@@ -57,7 +71,7 @@ namespace NightTrolleybus.Vehicle.Repair
 
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
-                Close();
+                Leave();
                 return;
             }
 
@@ -66,20 +80,21 @@ namespace NightTrolleybus.Vehicle.Repair
                 GameContext.Faults?.Clear(fault);
                 GameContext.Power?.Restore(powerOnRepair);
                 GameContext.Audio?.Play(SoundId.RepairDone);
+                view.ShowDone();
                 Close();
-                return;
             }
-
-            repairTextChanged.Raise(Loc.F("{0}\nEsc: відійти", minigame.Text));
         }
 
-        private void OnDestroy() => repairTextChanged.Raise(string.Empty);
+        private void Leave()
+        {
+            view.Hide();
+            Close();
+        }
 
         private void Close()
         {
             minigame = null;
             LastClosedFrame = Time.frameCount;
-            repairTextChanged.Raise(string.Empty);
             playerMotor.SetLocked(false);
         }
     }

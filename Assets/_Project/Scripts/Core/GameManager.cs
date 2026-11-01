@@ -31,6 +31,7 @@ namespace NightTrolleybus.Core
 
         [Header("Канали подій")]
         [SerializeField] private VoidEventChannel flameExtinguished;
+        [SerializeField] private VoidEventChannel playerDied;
         [SerializeField] private VoidEventChannel arrivedAtNode;
         [SerializeField] private VoidEventChannel stopCompleted;
         [SerializeField] private BoolEventChannel inBusChanged;
@@ -62,6 +63,7 @@ namespace NightTrolleybus.Core
         private void OnEnable()
         {
             flameExtinguished.Raised += OnFlameExtinguished;
+            playerDied.Raised += OnPlayerDied;
             arrivedAtNode.Raised += OnArrived;
             stopCompleted.Raised += ShowMap;
             route.NodeSelected += OnNodeSelected;
@@ -74,6 +76,7 @@ namespace NightTrolleybus.Core
         private void OnDisable()
         {
             flameExtinguished.Raised -= OnFlameExtinguished;
+            playerDied.Raised -= OnPlayerDied;
             arrivedAtNode.Raised -= OnArrived;
             stopCompleted.Raised -= ShowMap;
             route.NodeSelected -= OnNodeSelected;
@@ -218,6 +221,7 @@ namespace NightTrolleybus.Core
             else if (stopScene != null)
             {
                 stateMachine.Change(new SceneState(this, StopState, stopScene, 1f, false));
+                noticeRaised.Raise(node.Type.DisplayName());
                 objectiveChanged.Raise(node.Type == NodeType.Depot
                     ? Loc.T("Спершу заряд: шафа із синім світлом поруч із входом (E). Потім предмети й назад до дверей ліворуч")
                     : Loc.T("Шукайте предмети в кімнатах. Щоб поїхати, поверніться до дверей ліворуч і натисніть E. Темрява наближається!"));
@@ -249,6 +253,15 @@ namespace NightTrolleybus.Core
 
             GameContext.Audio?.Play(SoundId.Lose);
             stateMachine.Change(new EndState(this, Loc.T("Вогник згас. Ніч лишилася назавжди.")));
+        }
+
+        private void OnPlayerDied()
+        {
+            if (gameEnded)
+                return;
+
+            GameContext.Audio?.Play(SoundId.Lose);
+            stateMachine.Change(new EndState(this, Loc.T("Ви загинули. Вогник лишився сам у темряві.")));
         }
 
         private void ReturnToMenu()

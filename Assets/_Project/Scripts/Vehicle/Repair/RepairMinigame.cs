@@ -2,17 +2,34 @@ using UnityEngine.InputSystem;
 
 namespace NightTrolleybus.Vehicle.Repair
 {
-    /// <summary>Міні-гра ремонту. Логіка не залежить від інтерфейсу: вона лише дає текст для показу.</summary>
+    /// <summary>Міні-гра ремонту. Логіка не залежить від інтерфейсу: вона лише відкриває свій стан для показу.</summary>
     public abstract class RepairMinigame
     {
-        public abstract string Text { get; }
+        private int pressedChoice;
+
+        /// <summary>Скільки разів гравець помилився: інтерфейс показує кожну помилку.</summary>
+        public int Mistakes { get; protected set; }
+
+        /// <summary>Вибір мишею: спрацює в наступному Tick, як і клавіша.</summary>
+        public void Press(int choice) => pressedChoice = choice;
 
         /// <summary>Повертає true, коли ремонт завершено.</summary>
         public abstract bool Tick(Keyboard keyboard, float deltaTime);
 
-        /// <summary>Номер натиснутої клавіші 1..3 або 0, якщо жодної.</summary>
-        protected static int ReadDigit(Keyboard keyboard)
+        /// <summary>Вибір мишею або 0, якщо його не було.</summary>
+        protected int ConsumePress()
         {
+            int choice = pressedChoice;
+            pressedChoice = 0;
+            return choice;
+        }
+
+        /// <summary>Вибраний номер 1..3 або 0, якщо вибору не було.</summary>
+        protected int ReadChoice(Keyboard keyboard)
+        {
+            int choice = ConsumePress();
+            if (choice != 0)
+                return choice;
             if (keyboard.digit1Key.wasPressedThisFrame)
                 return 1;
             if (keyboard.digit2Key.wasPressedThisFrame)

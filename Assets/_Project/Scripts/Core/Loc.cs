@@ -30,7 +30,7 @@ namespace NightTrolleybus.Core
             { "{0} км/год", "{0} km/h" },
 
             // Цілі
-            { "Зупинка: {0}. Підійдіть до зелених дверей посеред салону й натисніть E", "Stop: {0}. Go to the green door in the middle of the cabin and press E" },
+            { "Зупинка: {0}. Підійдіть до дверей посеред салону й натисніть E", "Stop: {0}. Go to the door in the middle of the cabin and press E" },
             { "Ви на місці: {0}. Тримайте S, щоб зупинитися", "You have arrived: {0}. Hold S to stop" },
             { "Ви на місці: {0}. Сядьте за кермо й зупиніть тролейбус клавішею S", "You have arrived: {0}. Take the wheel and stop the trolleybus with S" },
             { "Штанги злетіли, тролейбус не їде. Підійдіть до червоної станції й натисніть E", "The poles came off and the trolleybus has stopped. Go to the red station and press E" },
@@ -45,6 +45,9 @@ namespace NightTrolleybus.Core
             { "Оберіть, як вчинити", "Choose what to do" },
 
             // Повідомлення
+            { "Порожньо", "Empty" },
+            { "Q: використати", "Q: use" },
+            { "G: зігріти салон Вогником (-10 полум'я)", "G: warm the cabin with the Flame (-10 flame)" },
             { "Інвентар заповнений", "Inventory is full" },
             { "Отримано: {0}", "Received: {0}" },
             { "{0}: це для обміну", "{0}: for trading only" },
@@ -55,7 +58,7 @@ namespace NightTrolleybus.Core
             { "{0} за {1} × {2}", "{0} for {1} × {2}" },
             { "Бракує: {0}", "Not enough: {0}" },
             { "Нова зброя: {0}", "New weapon: {0}" },
-            { "Ви впали. Вогник витратив силу, щоб повернути вас.", "You fell. The Flame spent its strength to bring you back." },
+            { "Ви загинули. Вогник лишився сам у темряві.", "You died. The Flame is left alone in the dark." },
             { "Зайшов пасажир: {0}", "A passenger boarded: {0}" },
             { "Тут нічого зігрівати", "Nothing to warm here" },
             { "Вогнику бракує сили", "The Flame is too weak" },
@@ -73,18 +76,27 @@ namespace NightTrolleybus.Core
             { "У головне меню", "To main menu" },
 
             // Ремонт
-            { "Штанги: Пробіл, коли | на дроті #\n[{0}]\nПідключено: {1}/{2}", "Poles: Space when | is on wire #\n[{0}]\nConnected: {1}/{2}" },
-            { "Запобіжник: потрібен на {0} А\n1) {1} А   2) {2} А   3) {3} А", "Fuse: {0} A needed\n1) {1} A   2) {2} A   3) {3} A" },
-            { "\nІскра! Не той запобіжник.", "\nSparks! Wrong fuse." },
-            { "Проводи: з'єднайте по черзі\n{0}\nЗ'єднано: {1}/{2}", "Wires: connect in order\n{0}\nConnected: {1}/{2}" },
-            { "{0}\nEsc: відійти", "{0}\nEsc: step away" },
+            { "Підключити штанги", "Reconnect the poles" },
+            { "Замінити запобіжник", "Replace the fuse" },
+            { "З'єднати проводи", "Connect the wires" },
+            { "Підключити (Пробіл)", "Connect (Space)" },
+            { "Тисніть, коли штанга над дротом. Тричі поспіль.", "Press when the pole is over the wire. Three times in a row." },
+            { "Промах! Спочатку.", "Missed! Start over." },
+            { "Виберіть запобіжник на потрібний струм.", "Pick the fuse with the required current." },
+            { "Потрібен на {0} А", "{0} A needed" },
+            { "{0} А", "{0} A" },
+            { "Іскра! Не той запобіжник.", "Sparks! Wrong fuse." },
+            { "З'єднайте проводи в указаному порядку.", "Connect the wires in the order shown." },
+            { "Не той провід! Спочатку.", "Wrong wire! Start over." },
+            { "Відремонтовано!", "Repaired!" },
+            { "Esc: відійти", "Esc: step away" },
 
             // Предмети, зброя, пасажири
             { "Сірник", "Match" },
             { "Свічка", "Candle" },
             { "Акумулятор", "Battery" },
             { "Старий квиток", "Old ticket" },
-            { "Обрізок труби", "Pipe" },
+            { "Біта", "Bat" },
             { "Лом", "Crowbar" },
             { "Пожежна сокира", "Fire axe" },
             { "Бабуся зі свічкою", "Old woman with a candle" },

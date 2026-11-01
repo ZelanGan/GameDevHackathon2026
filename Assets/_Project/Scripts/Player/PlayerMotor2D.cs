@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,6 +12,7 @@ namespace NightTrolleybus.Player
         [Tooltip("Вид зверху: рух у всіх напрямках без гравітації, погляд за курсором")]
         [SerializeField] private bool topDown;
 
+        private readonly Dictionary<object, float> slows = new Dictionary<object, float>();
         private Rigidbody2D body;
         private InputAction moveAction;
         private Vector2 input;
@@ -32,6 +34,22 @@ namespace NightTrolleybus.Player
 
         /// <summary>Блокує рух, наприклад коли гравець сидить за кермом.</summary>
         public void SetLocked(bool value) => locked = value;
+
+        /// <summary>Сповільнення від джерела. Кілька джерел не множаться: діє найсильніше.</summary>
+        public void AddSlow(object source, float factor) => slows[source] = factor;
+
+        public void RemoveSlow(object source) => slows.Remove(source);
+
+        private float SpeedFactor
+        {
+            get
+            {
+                float factor = 1f;
+                foreach (float slow in slows.Values)
+                    factor = Mathf.Min(factor, slow);
+                return factor;
+            }
+        }
 
         private void Update()
         {
@@ -68,7 +86,7 @@ namespace NightTrolleybus.Player
         {
             // Діагональ не має бути швидшою за рух по прямій.
             if (topDown)
-                body.linearVelocity = Vector2.ClampMagnitude(input, 1f) * speed;
+                body.linearVelocity = Vector2.ClampMagnitude(input, 1f) * (speed * SpeedFactor);
             else
                 body.linearVelocity = new Vector2(input.x * speed, body.linearVelocity.y);
         }

@@ -1,5 +1,3 @@
-using System.Linq;
-using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,7 +7,6 @@ namespace NightTrolleybus.Vehicle.Repair
     public class WiresMinigame : RepairMinigame
     {
         private readonly int[] order = { 1, 2, 3 };
-        private int connected;
 
         public WiresMinigame()
         {
@@ -20,17 +17,40 @@ namespace NightTrolleybus.Vehicle.Repair
             }
         }
 
-        public override string Text =>
-            Loc.F("Проводи: з'єднайте по черзі\n{0}\nЗ'єднано: {1}/{2}", string.Join(" -> ", order.Select(wire => wire.ToString())), connected, order.Length);
+        public int WireCount => order.Length;
+        public int Connected { get; private set; }
+
+        /// <summary>Номер проводу (1..3), який стоїть на цьому місці в черзі.</summary>
+        public int WireAt(int position) => order[position];
+
+        public bool IsConnected(int wire)
+        {
+            for (int i = 0; i < Connected; i++)
+            {
+                if (order[i] == wire)
+                    return true;
+            }
+
+            return false;
+        }
 
         public override bool Tick(Keyboard keyboard, float deltaTime)
         {
-            int digit = ReadDigit(keyboard);
-            if (digit == 0)
+            int choice = ReadChoice(keyboard);
+            if (choice == 0)
                 return false;
 
-            connected = digit == order[connected] ? connected + 1 : 0;
-            return connected == order.Length;
+            if (choice == order[Connected])
+            {
+                Connected++;
+            }
+            else
+            {
+                Connected = 0;
+                Mistakes++;
+            }
+
+            return Connected == order.Length;
         }
     }
 }

@@ -1,4 +1,3 @@
-using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,26 +8,24 @@ namespace NightTrolleybus.Vehicle.Repair
     {
         private static readonly int[] Amps = { 10, 25, 40 };
 
-        private int required;
-        private bool sparked;
+        public FuseMinigame() => Required = Amps[Random.Range(0, Amps.Length)];
 
-        public FuseMinigame() => required = Amps[Random.Range(0, Amps.Length)];
+        public int Required { get; private set; }
+        public int ChoiceCount => Amps.Length;
 
-        public override string Text =>
-            Loc.F("Запобіжник: потрібен на {0} А\n1) {1} А   2) {2} А   3) {3} А", required, Amps[0], Amps[1], Amps[2]) +
-            (sparked ? Loc.T("\nІскра! Не той запобіжник.") : string.Empty);
+        public int AmpsOf(int index) => Amps[index];
 
         public override bool Tick(Keyboard keyboard, float deltaTime)
         {
-            int digit = ReadDigit(keyboard);
-            if (digit == 0)
+            int choice = ReadChoice(keyboard);
+            if (choice == 0)
                 return false;
 
-            if (Amps[digit - 1] == required)
+            if (Amps[choice - 1] == Required)
                 return true;
 
-            sparked = true;
-            required = Amps[Random.Range(0, Amps.Length)];
+            Mistakes++;
+            Required = Amps[Random.Range(0, Amps.Length)];
             return false;
         }
     }

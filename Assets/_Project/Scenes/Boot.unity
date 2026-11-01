@@ -198,7 +198,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 32, y: -212}
+  m_AnchoredPosition: {x: 32, y: -234}
   m_SizeDelta: {x: 860, y: 40}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &31552053
@@ -396,9 +396,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.UI.BusHudView
   faultsChanged: {fileID: 11400000, guid: 1c0789f45c97eee4181c034f7e079ef3, type: 2}
-  repairTextChanged: {fileID: 11400000, guid: 934ff41eb0deebb40b246d34ff2a9416, type: 2}
   faultsLabel: {fileID: 31552053}
-  repairLabel: {fileID: 1272355913}
 --- !u!114 &46257625
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -452,7 +450,6 @@ MonoBehaviour:
   powerChanged: {fileID: 11400000, guid: 33d83d581a1c4454c8968d0672289fad, type: 2}
   fearChanged: {fileID: 11400000, guid: 8c0d8a78df4d66a43825061add0b0f9f, type: 2}
   healthChanged: {fileID: 11400000, guid: a92a8491b4c638b479f883fb6f7b1c08, type: 2}
-  darknessChanged: {fileID: 11400000, guid: d057699e37c055d43a5e912551aff9a2, type: 2}
   speedChanged: {fileID: 11400000, guid: 53f473e416afe6041afe81f34f6e415f, type: 2}
   tripChanged: {fileID: 11400000, guid: 2c76d79827afbab45bb9608f5cfa00f0, type: 2}
   gaugesRoot: {fileID: 1099103211}
@@ -465,7 +462,6 @@ MonoBehaviour:
   powerIcon: {fileID: 21300000, guid: 6120c9247d204584899f10114cd6f4a2, type: 3}
   fearIcon: {fileID: 21300000, guid: 1af5feb2b4c09d74c8339d1d241456f1, type: 3}
   healthIcon: {fileID: 21300000, guid: 4afdfdf2dc62bf94ca80cc8b10763746, type: 3}
-  darknessIcon: {fileID: 21300000, guid: 92df13784270f4d4089d9fde9a21678f, type: 3}
   trendArrow: {fileID: 21300000, guid: b818d8f8572f71342a191f503cef437f, type: 3}
   trolleyIcon: {fileID: 21300000, guid: 3e04f9cb316a4b9438a2640019b1b483, type: 3}
   stopIcon: {fileID: 21300000, guid: 850b03f83e1a68644b76e54932b9650d, type: 3}
@@ -1162,6 +1158,7 @@ MonoBehaviour:
   saveSystem: {fileID: 1065090584}
   roadEvents: {fileID: 1839149351}
   flameExtinguished: {fileID: 11400000, guid: d6f9a2f3f9e44244a9cc0f72ffaf6b7c, type: 2}
+  playerDied: {fileID: 11400000, guid: 02bf1bcac971d614bb73bab954f93c5a, type: 2}
   arrivedAtNode: {fileID: 11400000, guid: 35fdf33bf22392547b663f8675784833, type: 2}
   stopCompleted: {fileID: 11400000, guid: 6d4c6ac8dfca5fe49b546ec3be260729, type: 2}
   inBusChanged: {fileID: 11400000, guid: f27802d960475b047a9caee651dfee55, type: 2}
@@ -1776,7 +1773,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 31552052}
-  - {fileID: 1272355912}
   m_Father: {fileID: 46257631}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2269,85 +2265,6 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1258117617}
-  m_CullTransparentMesh: 1
---- !u!1 &1272355911
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1272355912}
-  - component: {fileID: 1272355914}
-  - component: {fileID: 1272355913}
-  m_Layer: 0
-  m_Name: RepairLabel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1272355912
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1272355911}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 891921073}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 32, y: -252}
-  m_SizeDelta: {x: 860, y: 170}
-  m_Pivot: {x: 0, y: 1}
---- !u!114 &1272355913
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1272355911}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 26
-    m_FontStyle: 0
-    m_BestFit: 0
-    m_MinSize: 10
-    m_MaxSize: 40
-    m_Alignment: 0
-    m_AlignByGeometry: 0
-    m_RichText: 1
-    m_HorizontalOverflow: 0
-    m_VerticalOverflow: 0
-    m_LineSpacing: 1
-  m_Text: 
---- !u!222 &1272355914
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1272355911}
   m_CullTransparentMesh: 1
 --- !u!1 &1274873514
 GameObject:

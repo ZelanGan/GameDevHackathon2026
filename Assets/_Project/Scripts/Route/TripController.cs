@@ -66,7 +66,7 @@ namespace NightTrolleybus.Route
             string destination = target.Type.DisplayName();
 
             if (CanExit)
-                return Loc.F("Зупинка: {0}. Підійдіть до зелених дверей посеред салону й натисніть E", destination);
+                return Loc.F("Зупинка: {0}. Підійдіть до дверей посеред салону й натисніть E", destination);
             if (IsArrived)
                 return bus.IsDriving
                     ? Loc.F("Ви на місці: {0}. Тримайте S, щоб зупинитися", destination)

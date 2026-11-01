@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using NightTrolleybus.Core.Events;
 using NightTrolleybus.Core;
+using NightTrolleybus.Core.Events;
 using NightTrolleybus.Route;
 using NightTrolleybus.Vehicle;
 using UnityEngine;

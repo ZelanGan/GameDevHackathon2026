@@ -29,6 +29,8 @@ namespace NightTrolleybus.UI
         private Image[] slotFrames;
         private Image[] slotIcons;
         private Text titleLabel;
+        private Button useButton;
+        private Text useLabel;
         private int hoveredIndex = -1;
 
         private void Awake() => Build();
@@ -85,8 +87,13 @@ namespace NightTrolleybus.UI
             if (count == 0)
             {
                 titleLabel.text = string.Empty;
+                useButton.gameObject.SetActive(false);
                 return;
             }
+
+            // Квиток лише для обміну, тому кнопка з'являється тільки для предметів, які можна застосувати.
+            useButton.gameObject.SetActive(inventory.Items[inventory.SelectedIndex].IsUsable);
+            useLabel.text = Loc.T("Q: використати");
 
             // Під курсором видно назву іншої клітинки, інакше вибраний предмет, який витратить Q.
             bool peeksOther = hoveredIndex >= 0 && hoveredIndex < count && hoveredIndex != inventory.SelectedIndex;
@@ -101,7 +108,7 @@ namespace NightTrolleybus.UI
             panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0f);
             panel.pivot = new Vector2(0.5f, 0f);
             panel.anchoredPosition = new Vector2(0f, 20f);
-            panel.sizeDelta = new Vector2(rowWidth, SlotSize + 48f);
+            panel.sizeDelta = new Vector2(rowWidth, SlotSize + 96f);
 
             slotFrames = new Image[capacity];
             slotIcons = new Image[capacity];
@@ -109,6 +116,35 @@ namespace NightTrolleybus.UI
                 BuildSlot(i);
 
             titleLabel = CreateText("Title", 28, FontStyle.Bold, Warm, 10f, 36f);
+            BuildUseButton();
+        }
+
+        private void BuildUseButton()
+        {
+            var image = new GameObject("UseButton").AddComponent<Image>();
+            image.transform.SetParent(panel, false);
+            image.sprite = frame;
+            image.type = Image.Type.Sliced;
+            image.color = Color.white;
+            RectTransform rect = image.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.sizeDelta = new Vector2(260f, 44f);
+            rect.anchoredPosition = new Vector2(0f, SlotSize + 50f);
+
+            useButton = image.gameObject.AddComponent<Button>();
+            ColorBlock colors = useButton.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = SlotSelected;
+            colors.selectedColor = Color.white;
+            colors.pressedColor = new Color(1f, 0.85f, 0.5f);
+            useButton.colors = colors;
+            useButton.onClick.AddListener(inventory.UseSelected);
+
+            useLabel = CreateSlotText("Label", image.transform, string.Empty, 22, Color.white);
+            useLabel.alignment = TextAnchor.MiddleCenter;
+            Inset(useLabel.rectTransform, 2f);
+            useButton.gameObject.SetActive(false);
         }
 
         private void BuildSlot(int index)

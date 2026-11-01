@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using NightTrolleybus.Core.Events;
+using NightTrolleybus.Items;
+using NightTrolleybus.Stops.Enemies;
 using UnityEngine;
 
 namespace NightTrolleybus.Stops
@@ -20,6 +23,7 @@ namespace NightTrolleybus.Stops
         private const int GapHeight = 4;
         private const float WallShadowThickness = 0.1f;
         private const float WallShadowOverlap = 0.6f;
+        private const float PropColliderScale = 0.8f;
         private static readonly Vector2Int StartCell = new Vector2Int(3, 12);
 
         [Tooltip("Неактивний зразок твердого об'єкта: спрайт, колайдер і дочірня тінь")]
@@ -38,6 +42,14 @@ namespace NightTrolleybus.Stops
         [SerializeField] private int propsMax = 16;
         [SerializeField] private Sprite[] decals;
         [SerializeField] private int decalCount = 60;
+
+        [Header("Ящик із лутом")]
+        [Tooltip("Меблі з цим спрайтом можна відкрити")]
+        [SerializeField] private Sprite lootBoxSprite;
+        [SerializeField] private Sprite lootBoxOpenSprite;
+        [Tooltip("Порожній елемент означає порожній ящик")]
+        [SerializeField] private ItemData[] lootBoxItems;
+        [SerializeField] private StringEventChannel noticeRaised;
 
         [Header("Що розкласти")]
         [Tooltip("Лишаються в першій частині локації, ближче до входу")]
@@ -67,8 +79,28 @@ namespace NightTrolleybus.Stops
             PlaceNearEntrance();
             PlaceProps();
             Scatter(pickups, EntranceEnd, 5f);
-            Scatter(enemies, firstWallMin + 2, 4f);
+            Scatter(AllowedEnemies(), firstWallMin + 2, 4f);
             PlaceDecals();
+        }
+
+        // Привиди стоять у сцені завжди, а на ранніх зупинках їх прибираємо.
+        private Transform[] AllowedEnemies()
+        {
+            bool wraithsAllowed = WraithBrain.IsAllowed;
+            var allowed = new List<Transform>();
+            foreach (Transform enemy in enemies)
+            {
+                if (wraithsAllowed || enemy.GetComponent<WraithBrain>() == null)
+                {
+                    allowed.Add(enemy);
+                    continue;
+                }
+
+                enemy.gameObject.SetActive(false);
+                Destroy(enemy.gameObject);
+            }
+
+            return allowed.ToArray();
         }
 
         private void BuildRooms()
@@ -115,7 +147,7 @@ namespace NightTrolleybus.Stops
                 for (int i = 0; i < runs; i++)
                 {
                     int length = Random.Range(4, 10);
-                    var run = new RectInt(x, Random.Range(1, Height - length - 1), 1, length);
+                    var run = new RectInt(x, Random.Range(2, Height - length - 1), 1, length);
                     if (TryBlock(run))
                         CreateSolid(interiorSprite, run, true);
                 }
@@ -146,18 +178,40 @@ namespace NightTrolleybus.Stops
             int count = Random.Range(propsMin, propsMax + 1);
             for (int i = 0; i < count; i++)
             {
-                Sprite sprite = props[Random.Range(0, props.Length)];
+                // Перший предмет гарантує, що ящик із лутом є на кожній такій зупинці.
+                Sprite sprite = i == 0 && lootBoxSprite != null ? lootBoxSprite : props[Random.Range(0, props.Length)];
                 RectInt area = Footprint(sprite.bounds.size);
                 for (int attempt = 0; attempt < PlaceAttempts; attempt++)
                 {
                     area.position = new Vector2Int(Random.Range(EntranceEnd + 1, Width - area.width), Random.Range(0, Height - area.height));
-                    if (!TryBlock(area))
+                    if (!HasClearance(area) || !TryBlock(area))
                         continue;
 
-                    CreateSolid(sprite, area, false);
+                    GameObject prop = CreateSolid(sprite, area, false);
+                    if (sprite == lootBoxSprite)
+                        prop.AddComponent<LootBox>().Initialize(lootBoxItems, lootBoxOpenSprite, noticeRaised);
                     break;
                 }
             }
+        }
+
+        // Навколо меблів лишається вільна клітинка: щілина, що виглядає прохідною, справді має бути прохідною.
+        private bool HasClearance(RectInt area)
+        {
+            int xMin = Mathf.Max(area.xMin - 1, 0);
+            int yMin = Mathf.Max(area.yMin - 1, 0);
+            int xMax = Mathf.Min(area.xMax + 1, Width);
+            int yMax = Mathf.Min(area.yMax + 1, Height);
+            for (int x = xMin; x < xMax; x++)
+            {
+                for (int y = yMin; y < yMax; y++)
+                {
+                    if (solid[x, y])
+                        return false;
+                }
+            }
+
+            return true;
         }
 
         private void Scatter(Transform[] items, int minX, float spacing)
@@ -194,7 +248,7 @@ namespace NightTrolleybus.Stops
             }
         }
 
-        private void CreateSolid(Sprite sprite, RectInt area, bool isTiled)
+        private GameObject CreateSolid(Sprite sprite, RectInt area, bool isTiled)
         {
             GameObject instance = Instantiate(solidTemplate, transform);
             instance.transform.position = Center(area);
@@ -206,7 +260,8 @@ namespace NightTrolleybus.Stops
             if (isTiled)
                 spriteRenderer.size = size;
 
-            instance.GetComponent<BoxCollider2D>().size = size;
+            // Колайдер меблів трохи менший за малюнок, щоб герой не чіплявся за порожні краї спрайта.
+            instance.GetComponent<BoxCollider2D>().size = isTiled ? size : size * PropColliderScale;
 
             // Тінь кидають лише стіни. Вона тонка посередині, щоб ближня до світла половина стіни лишалася видимою.
             Transform shadow = instance.transform.GetChild(0);
@@ -217,6 +272,7 @@ namespace NightTrolleybus.Stops
             shadow.localScale = new Vector3(WallShadowThickness, size.y + below + above, 1f);
             shadow.localPosition = new Vector3(0f, (above - below) / 2f, 0f);
             instance.SetActive(true);
+            return instance;
         }
 
         /// <summary>Займає ділянку лише тоді, коли після цього весь вільний простір лишається досяжним від входу.</summary>

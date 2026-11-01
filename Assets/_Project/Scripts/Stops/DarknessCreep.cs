@@ -29,6 +29,10 @@ namespace NightTrolleybus.Stops
 
         [Header("Моби")]
         [SerializeField] private GameObject enemyPrefab;
+        [SerializeField] private GameObject rangedPrefab;
+        [Tooltip("Яка частка насланих мобів атакує здалеку")]
+        [Range(0f, 1f)]
+        [SerializeField] private float rangedChance = 0.25f;
         [Tooltip("Секунди між мобами на початку зупинки")]
         [SerializeField] private float slowSpawnInterval = 28f;
         [Tooltip("Секунди між мобами, коли темрява вже дійшла до входу")]
@@ -94,8 +98,10 @@ namespace NightTrolleybus.Stops
                 return;
             }
 
-            GameObject enemy = Instantiate(enemyPrefab, point, Quaternion.identity);
-            enemy.GetComponent<EnemyBrain>().Alert();
+            GameObject prefab = rangedPrefab != null && WraithBrain.IsAllowed && Random.value < rangedChance ? rangedPrefab : enemyPrefab;
+            GameObject enemy = Instantiate(prefab, point, Quaternion.identity);
+            if (enemy.TryGetComponent(out EnemyBrain brain))
+                brain.Alert();
             GameContext.Audio?.Play(SoundId.EnemyAppear);
             spawned.Add(enemy);
             spawnTimer = Mathf.Lerp(slowSpawnInterval, fastSpawnInterval, Level);
@@ -127,7 +133,7 @@ namespace NightTrolleybus.Stops
             for (int i = 0; i < count; i++)
             {
                 Transform hit = lineHits[i].transform;
-                if (hit != player && hit.GetComponent<EnemyBrain>() == null)
+                if (hit != player && hit.GetComponent<NightTrolleybus.Flame.IStunnable>() == null)
                     return false;
             }
 

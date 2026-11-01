@@ -11,10 +11,15 @@ namespace NightTrolleybus.UI
     {
         private const float LowPower = 0.5f;
 
-        private static readonly Vector2 NodeSize = new Vector2(190f, 64f);
+        private static readonly Vector2 NodeSize = new Vector2(190f, 126f);
+        private static readonly Vector2 IconSize = new Vector2(170f, 74f);
+        private const float LabelHeight = 50f;
+        private static readonly Color DimIconColor = new Color(0.55f, 0.55f, 0.6f);
 
         [SerializeField] private RectTransform root;
         [SerializeField] private Sprite square;
+        [Tooltip("Малюнки вузлів у порядку NodeType")]
+        [SerializeField] private Sprite[] nodeIcons;
         [SerializeField] private Font font;
         [SerializeField] private float layerSpacing = 280f;
         [SerializeField] private float rowSpacing = 150f;
@@ -56,11 +61,25 @@ namespace NightTrolleybus.UI
 
             var button = image.gameObject.AddComponent<Button>();
             button.interactable = available;
+            // Недоступний вузол темний сам по собі, а прозорий він пропускав би лінії маршруту.
+            ColorBlock colors = button.colors;
+            colors.disabledColor = Color.white;
+            button.colors = colors;
             button.onClick.AddListener(() =>
             {
                 GameContext.Audio?.Play(SoundId.UiClick);
                 route.Select(node);
             });
+
+            var icon = new GameObject("Icon").AddComponent<Image>();
+            icon.transform.SetParent(image.transform, false);
+            icon.sprite = nodeIcons[(int)node.Type];
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            // Малюнок яскравий лише там, куди можна поїхати.
+            icon.color = available ? Color.white : DimIconColor;
+            icon.rectTransform.sizeDelta = IconSize;
+            icon.rectTransform.anchoredPosition = new Vector2(0f, LabelHeight / 2f);
 
             var label = new GameObject("Label").AddComponent<Text>();
             label.transform.SetParent(image.transform, false);
@@ -69,10 +88,12 @@ namespace NightTrolleybus.UI
             label.alignment = TextAnchor.MiddleCenter;
             label.color = available ? Color.black : new Color(0.75f, 0.75f, 0.75f);
             label.text = $"{node.Type.DisplayName()}\n<size=15>{node.Type.Benefit()}</size>";
+            label.raycastTarget = false;
             label.rectTransform.anchorMin = Vector2.zero;
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = Vector2.zero;
-            label.rectTransform.offsetMax = Vector2.zero;
+            label.rectTransform.anchorMax = new Vector2(1f, 0f);
+            label.rectTransform.pivot = new Vector2(0.5f, 0f);
+            label.rectTransform.sizeDelta = new Vector2(0f, LabelHeight);
+            label.rectTransform.anchoredPosition = Vector2.zero;
         }
 
         private void CreateLine(Vector2 from, Vector2 to, bool bright)

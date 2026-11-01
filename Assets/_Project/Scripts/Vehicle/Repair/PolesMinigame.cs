@@ -1,4 +1,3 @@
-using NightTrolleybus.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -7,35 +6,38 @@ namespace NightTrolleybus.Vehicle.Repair
     /// <summary>Підключення штанг: тричі поспіль натиснути пробіл, коли штанга над дротом.</summary>
     public class PolesMinigame : RepairMinigame
     {
-        private const int RequiredHits = 3;
-        private const int BarLength = 21;
+        public const int RequiredHits = 3;
+
         private const float MarkerSpeed = 0.8f;
-        private const float WireZone = 0.12f;
+
+        /// <summary>Половина ширини влучної зони в частках шкали.</summary>
+        public const float WireZone = 0.12f;
 
         private float time;
-        private int hits;
 
-        private float Marker => Mathf.PingPong(time * MarkerSpeed, 1f);
+        public int Hits { get; private set; }
 
-        public override string Text
-        {
-            get
-            {
-                char[] bar = new string('-', BarLength).ToCharArray();
-                bar[BarLength / 2] = '#';
-                bar[Mathf.RoundToInt(Marker * (BarLength - 1))] = '|';
-                return Loc.F("Штанги: Пробіл, коли | на дроті #\n[{0}]\nПідключено: {1}/{2}", new string(bar), hits, RequiredHits);
-            }
-        }
+        /// <summary>Положення штанги на шкалі 0..1, дріт посередині.</summary>
+        public float Marker => Mathf.PingPong(time * MarkerSpeed, 1f);
 
         public override bool Tick(Keyboard keyboard, float deltaTime)
         {
             time += deltaTime;
-            if (!keyboard.spaceKey.wasPressedThisFrame)
+            bool pressed = ConsumePress() != 0 || keyboard.spaceKey.wasPressedThisFrame;
+            if (!pressed)
                 return false;
 
-            hits = Mathf.Abs(Marker - 0.5f) <= WireZone ? hits + 1 : 0;
-            return hits >= RequiredHits;
+            if (Mathf.Abs(Marker - 0.5f) <= WireZone)
+            {
+                Hits++;
+            }
+            else
+            {
+                Hits = 0;
+                Mistakes++;
+            }
+
+            return Hits >= RequiredHits;
         }
     }
 }

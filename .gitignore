@@ -28,6 +28,7 @@
 UpgradeLog*.htm
 
 # Builds and crash dumps
+/Build/
 *.apk
 *.aab
 *.unitypackage

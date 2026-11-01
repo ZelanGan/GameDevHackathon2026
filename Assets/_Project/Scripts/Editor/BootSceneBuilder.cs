@@ -79,13 +79,13 @@ namespace NightTrolleybus.EditorTools
             var inventory = Child("Inventory", root).AddComponent<Inventory>();
             Wire(inventory, ("inventoryChanged", inventoryChanged), ("noticeRaised", noticeRaised));
             var loadout = Child("PlayerLoadout", root).AddComponent<PlayerLoadout>();
-            Wire(loadout, ("startingWeapon", Pipe));
+            Wire(loadout, ("startingWeapon", Bat));
             var roster = Child("PassengerRoster", root).AddComponent<PassengerRoster>();
             var route = Child("RouteManager", root).AddComponent<RouteManager>();
 
             var database = GetOrCreate<GameDatabase>(Root + "/Data/GameDatabase.asset");
             WireArray(database, "items", new Object[] { Match, Candle, Battery, Ticket });
-            WireArray(database, "weapons", new Object[] { Pipe, Crowbar, FireAxe });
+            WireArray(database, "weapons", new Object[] { Bat, Crowbar, FireAxe });
             WireArray(database, "passengers", BusSceneBuilder.PassengerPool());
             AssetDatabase.SaveAssets();
 
@@ -142,7 +142,7 @@ namespace NightTrolleybus.EditorTools
 
             Wire(gameManager,
                 ("sceneLoader", sceneLoader), ("route", route), ("saveSystem", saveSystem), ("roadEvents", eventRunner),
-                ("flameExtinguished", extinguished), ("arrivedAtNode", Channel<VoidEventChannel>("ArrivedAtNode")),
+                ("flameExtinguished", extinguished), ("playerDied", Channel<VoidEventChannel>("PlayerDied")), ("arrivedAtNode", Channel<VoidEventChannel>("ArrivedAtNode")),
                 ("stopCompleted", Channel<VoidEventChannel>("StopCompleted")), ("inBusChanged", inBusChanged),
                 ("gameStateChanged", gameStateChanged), ("noticeRaised", noticeRaised),
                 ("objectiveChanged", Channel<StringEventChannel>("ObjectiveChanged")),
@@ -223,12 +223,10 @@ namespace NightTrolleybus.EditorTools
             var ridePanel = new GameObject("RidePanel", typeof(RectTransform));
             ridePanel.transform.SetParent(hud.transform, false);
             StretchFull((RectTransform)ridePanel.transform);
-            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -212f, 40f, string.Empty);
-            Text repairLabel = CreateLabel("RepairLabel", ridePanel.transform, -252f, 170f, string.Empty);
+            Text faultsLabel = CreateLabel("FaultsLabel", ridePanel.transform, -234f, 40f, string.Empty);
             Wire(hud.AddComponent<BusHudView>(),
                 ("faultsChanged", Channel<VoidEventChannel>("FaultsChanged")),
-                ("repairTextChanged", Channel<StringEventChannel>("RepairTextChanged")),
-                ("faultsLabel", faultsLabel), ("repairLabel", repairLabel));
+                ("faultsLabel", faultsLabel));
 
             var stopPanel = new GameObject("StopPanel", typeof(RectTransform));
             stopPanel.transform.SetParent(hud.transform, false);

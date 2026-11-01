@@ -4,6 +4,7 @@ using NightTrolleybus.Items;
 using NightTrolleybus.Passengers;
 using NightTrolleybus.Player;
 using NightTrolleybus.Route;
+using NightTrolleybus.UI;
 using NightTrolleybus.Vehicle;
 using NightTrolleybus.Vehicle.Repair;
 using Unity.Cinemachine;
@@ -73,7 +74,9 @@ namespace NightTrolleybus.EditorTools
             CreateFollowCameras(player.transform, 3.3333333f, 1.2f);
 
             var repairHost = logic.AddComponent<RepairHost>();
-            Wire(repairHost, ("playerMotor", motor), ("repairTextChanged", Channel<StringEventChannel>("RepairTextChanged")));
+            var repairView = logic.AddComponent<RepairView>();
+            Wire(repairView, ("frame", PixelArt.GetSliced("UI_Frame", 4)), ("square", Square), ("font", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")));
+            Wire(repairHost, ("playerMotor", motor), ("view", repairView));
             CreateRepairStation("PolesStation", new Vector3(5.4f, 1.6f, 0f), FaultType.PolesOff, "Підключити штанги", repairHost, faultsChanged);
             CreateRepairStation("FuseStation", new Vector3(2.9f, 0.4f, 0f), FaultType.FuseBlown, "Замінити запобіжник", repairHost, faultsChanged);
             CreateRepairStation("WiresStation", new Vector3(-4.4f, 0.4f, 0f), FaultType.WiresLoose, "З'єднати проводи", repairHost, faultsChanged);
@@ -240,19 +243,17 @@ namespace NightTrolleybus.EditorTools
             GameObject lightSwitchObject = CreateDevice("LightSwitch", devices, new Vector3(-7f, 0f, 0f), "Switch");
             AddDeviceSwitch(lightSwitchObject, DeviceKind.CabinLight, "світло в салоні");
 
-            GameObject doorsObject = CreateDevice("DoorsSwitch", devices, new Vector3(0f, -1f, 0f), "DoorLever");
+            GameObject doorsObject = CreateDevice("DoorsSwitch", devices, new Vector3(0.6f, -1f, 0f), "DoorLever");
             doorsObject.AddComponent<DoorsSwitch>();
             var doorsChannel = Channel<BoolEventChannel>("DoorsOpenChanged");
             AddStateView(doorsObject, ViewedDevice.Doors, doorsChannel, "DoorLever", new[] { "DoorLever_Open" }, null);
 
             // Самі двері на стіні за сидіннями, поруч із важелем. Холодне світло знадвору видно здалеку.
-            GameObject cabinDoor = CreateArt("CabinDoor", devices, new Vector3(0.8f, -1.125f, 0f), "CabinDoor_Closed", -3);
+            GameObject cabinDoor = CreateArt("CabinDoor", devices, new Vector3(-0.35f, -1.125f, 0f), "CabinDoor_Closed", -3);
+            // Одні двері на все: важіль їх відчиняє, а на зупинці через них виходять.
+            AddFittedCollider(cabinDoor, true);
+            Wire(cabinDoor.AddComponent<BusExit>(), ("trip", trip));
             AddStateView(cabinDoor, ViewedDevice.Doors, doorsChannel, "CabinDoor_Closed", new[] { "CabinDoor_Open" }, new Color(0.45f, 0.65f, 1f));
-
-            GameObject exitObject = CreateDevice("BusExit", devices, new Vector3(-0.9f, -1.2f, 0f), "ExitDoor");
-            // Двері мають світитися навіть у темному салоні, бо це головний орієнтир на зупинці.
-            exitObject.GetComponent<SpriteRenderer>().sharedMaterial = UnlitMaterial;
-            Wire(exitObject.AddComponent<BusExit>(), ("trip", trip));
 
             GameObject seatObject = CreateDevice("DriverSeat", devices, new Vector3(7f, -1.4f, 0f), "DriverSeat");
             Wire(seatObject.AddComponent<DriverSeat>(), ("bus", bus), ("playerMotor", motor));

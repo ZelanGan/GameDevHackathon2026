@@ -34,6 +34,22 @@ namespace NightTrolleybus.Route
             Current = currentId >= 0 ? Nodes[currentId] : null;
         }
 
+        /// <summary>Скільки зупинок уже пройдено, разом із поточною. Події й порожня дорога не рахуються.</summary>
+        public int StopsVisited
+        {
+            get
+            {
+                int count = 0;
+                foreach (int id in visited)
+                {
+                    if (Nodes[id].Type.StopScene() != null)
+                        count++;
+                }
+
+                return count;
+            }
+        }
+
         public bool IsAvailable(RouteNode node) =>
             Current != null ? Current.Next.Contains(node) : node.Layer == 0;
 

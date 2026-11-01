@@ -1,5 +1,5 @@
-using NightTrolleybus.Core.Events;
 using NightTrolleybus.Core;
+using NightTrolleybus.Core.Events;
 using NightTrolleybus.Flame;
 using UnityEngine;
 using UnityEngine.UI;
@@ -68,6 +68,7 @@ namespace NightTrolleybus.UI
         private RectTransform trolley;
         private RectTransform needle;
         private Text speedLabel;
+        private Text warmHint;
         private Image fearTrend;
         private float lastFear;
         private float trendTimer;
@@ -87,10 +88,23 @@ namespace NightTrolleybus.UI
 
             CreateTrip();
             CreateSpeedometer();
+            CreateWarmHint();
         }
+
+        // Зігріти можна лише в салоні, тому підказка живе на панелі поїздки.
+        private void CreateWarmHint()
+        {
+            warmHint = CreateText("WarmHint", ridePanel, 22, TextAnchor.MiddleLeft);
+            PlaceTopLeft(warmHint.rectTransform, new Vector2(24f, -200f), new Vector2(600f, 30f));
+            warmHint.color = new Color(1f, 0.8f, 0.45f);
+            RefreshTexts();
+        }
+
+        private void RefreshTexts() => warmHint.text = Loc.T("G: зігріти салон Вогником (-10 полум'я)");
 
         private void OnEnable()
         {
+            GameSettings.LanguageChanged += RefreshTexts;
             flameChanged.Raised += OnFlameChanged;
             flameStateChanged.Raised += OnStateChanged;
             temperatureChanged.Raised += OnTemperatureChanged;
@@ -103,6 +117,7 @@ namespace NightTrolleybus.UI
 
         private void OnDisable()
         {
+            GameSettings.LanguageChanged -= RefreshTexts;
             flameChanged.Raised -= OnFlameChanged;
             flameStateChanged.Raised -= OnStateChanged;
             temperatureChanged.Raised -= OnTemperatureChanged;

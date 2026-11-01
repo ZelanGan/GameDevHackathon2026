@@ -19,6 +19,7 @@ namespace NightTrolleybus.EditorTools
     {
         private const string LevelName = "StopLevel";
         private const string EnemyPrefabPath = Root + "/Prefabs/Enemies/Shade.prefab";
+        private const string WraithPrefabPath = Root + "/Prefabs/Enemies/Wraith.prefab";
         private const string DepotPath = Root + "/Scenes/Stops/Stop_Depot.unity";
         private const string MarketPath = Root + "/Scenes/Stops/Stop_Market.unity";
         private const string GunShopPath = Root + "/Scenes/Stops/Stop_GunShop.unity";
@@ -30,6 +31,7 @@ namespace NightTrolleybus.EditorTools
         private const int MaxY = 12;
 
         private static bool overwrite;
+        private static string wallSprite;
 
         [MenuItem("Night Trolleybus/Scenes/Rebuild All Stops (overwrites scenes)")]
         public static void RebuildAll()
@@ -39,6 +41,7 @@ namespace NightTrolleybus.EditorTools
 
             // Префаб теж заново: у нього змінився колайдер і зник вплив гравітації.
             AssetDatabase.DeleteAsset(EnemyPrefabPath);
+            AssetDatabase.DeleteAsset(WraithPrefabPath);
             overwrite = true;
             try
             {
@@ -55,7 +58,7 @@ namespace NightTrolleybus.EditorTools
         [MenuItem("Night Trolleybus/Scenes/Build Stop Depot Scene")]
         public static void BuildDepot()
         {
-            if (!BeginScene(DepotPath, new Color(0.62f, 0.58f, 0.54f), "TopDepotFloor", out GameObject player, out Transform level))
+            if (!BeginScene(DepotPath, "Depot", out GameObject player, out Transform level))
                 return;
 
             // Депо: електрика й запчастини, кілька кімнат і небагато ворогів. Планування будує генератор.
@@ -89,7 +92,7 @@ namespace NightTrolleybus.EditorTools
             MakeRevealable(hiddenCandle);
             pickups.Add(hiddenCandle);
 
-            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, "Top_Wall", pickups, 3,
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, wallSprite, pickups, 3, 1,
                 new[] { "Top_Crate", "Top_Barrel", "Top_Spool", "Top_Tires", "Top_Workbench" },
                 new[] { "Decal_Oil", "Decal_Crack", "Decal_Cable", "Decal_Dust", "Decal_Paper" });
             SetInt(layout, "lastWallX", 48);
@@ -101,7 +104,7 @@ namespace NightTrolleybus.EditorTools
         [MenuItem("Night Trolleybus/Scenes/Build Stop Market Scene")]
         public static void BuildMarket()
         {
-            if (!BeginScene(MarketPath, new Color(0.56f, 0.62f, 0.68f), "TopMarketFloor", out GameObject player, out Transform level))
+            if (!BeginScene(MarketPath, "Market", out GameObject player, out Transform level))
                 return;
 
             // Супермаркет: ряди полиць, багато предметів, але й багато ворогів.
@@ -122,7 +125,7 @@ namespace NightTrolleybus.EditorTools
                 pickups.Add(hidden);
             }
 
-            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Aisles, "Top_Shelf", pickups, 6,
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Aisles, "Top_Shelf", pickups, 6, 2,
                 new[] { "Top_Cart", "Top_BoxPile", "Top_Checkout", "Top_Crate" },
                 new[] { "Decal_Spill", "Decal_Paper", "Decal_Can", "Decal_Crack", "Decal_Dust" });
             SetInt(layout, "firstWallMin", 10);
@@ -137,7 +140,7 @@ namespace NightTrolleybus.EditorTools
         [MenuItem("Night Trolleybus/Scenes/Build Stop Gun Shop Scene")]
         public static void BuildGunShop()
         {
-            if (!BeginScene(GunShopPath, new Color(0.64f, 0.54f, 0.54f), "TopGunShopFloor", out GameObject player, out Transform level))
+            if (!BeginScene(GunShopPath, "GunShop", out GameObject player, out Transform level))
                 return;
 
             // Магазин зброї: зал із прилавками, а далі склад із небезпечними знахідками.
@@ -152,18 +155,21 @@ namespace NightTrolleybus.EditorTools
                 CreateStand("Stand_Candle", new Vector2(23f, 5f), Ticket, 1, null, Candle)
             };
 
-            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, "Top_Wall", pickups, 2,
+            StopLayoutGenerator layout = CreateLayout(level, StopInterior.Rooms, wallSprite, pickups, 2, 1,
                 new[] { "Top_AmmoBox", "Top_Target", "Top_GunRack", "Top_Crate", "Top_Barrel" },
                 new[] { "Decal_Shells", "Decal_Crack", "Decal_Dust", "Decal_Paper", "Decal_Oil" });
             // Перша стіна далеко від входу: у залі мають поміститися всі прилавки.
             SetInt(layout, "firstWallMin", 24);
             SetInt(layout, "firstWallMax", 28);
             WireTransforms(layout, "nearEntrance", stands);
+            Wire(layout, ("lootBoxSprite", PixelArt.Get("Top_AmmoBox")), ("lootBoxOpenSprite", PixelArt.Get("Top_AmmoBox_Open")),
+                ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
+            WireArray(layout, "lootBoxItems", new Object[] { Ticket, Ticket, Match, Candle, null });
 
             FinishScene(GunShopPath, player);
         }
 
-        private static bool BeginScene(string path, Color floorColor, string tileName, out GameObject player, out Transform level)
+        private static bool BeginScene(string path, string theme, out GameObject player, out Transform level)
         {
             player = null;
             level = null;
@@ -176,7 +182,9 @@ namespace NightTrolleybus.EditorTools
             CreateGlobalLight(0f);
 
             level = new GameObject(LevelName).transform;
-            CreateFloor(level, floorColor, tileName);
+            // У кожної зупинки свої підлога й стіни, щоб її можна було впізнати з першого погляду.
+            wallSprite = $"Top_Wall_{theme}";
+            CreateFloor(level, $"Top{theme}Floor", $"Top_Floor_{theme}");
             Wall(level, MinX - 1, MinY - 1, MaxX + 1, MinY);
             Wall(level, MinX - 1, MaxY, MaxX + 1, MaxY + 1);
             Wall(level, MinX - 1, MinY, MinX, MaxY);
@@ -209,7 +217,7 @@ namespace NightTrolleybus.EditorTools
         }
 
         private static StopLayoutGenerator CreateLayout(Transform level, StopInterior interior, string interiorSprite,
-            List<GameObject> pickups, int enemyCount, string[] props, string[] decals)
+            List<GameObject> pickups, int enemyCount, int wraithCount, string[] props, string[] decals)
         {
             var layout = new GameObject("Layout").AddComponent<StopLayoutGenerator>();
             layout.transform.SetParent(level, false);
@@ -231,6 +239,9 @@ namespace NightTrolleybus.EditorTools
             var enemies = new List<GameObject>();
             for (int i = 0; i < enemyCount; i++)
                 enemies.Add((GameObject)PrefabUtility.InstantiatePrefab(enemyPrefab));
+            GameObject wraithPrefab = GetOrCreateWraithPrefab();
+            for (int i = 0; i < wraithCount; i++)
+                enemies.Add((GameObject)PrefabUtility.InstantiatePrefab(wraithPrefab));
             WireTransforms(layout, "enemies", enemies);
             return layout;
         }
@@ -270,22 +281,25 @@ namespace NightTrolleybus.EditorTools
             var trade = stand.AddComponent<TradeStand>();
             Wire(trade, ("costItem", cost), ("rewardWeapon", weapon), ("rewardItem", item), ("noticeRaised", Channel<StringEventChannel>("BusNoticeRaised")));
             SetInt(trade, "costCount", count);
+            // Товар лежить на вітрині: зброю видно ще до покупки.
+            if (weapon != null)
+                CreateArt("Goods", stand.transform, new Vector3(-0.7f, 0.42f, 0f), weapon.name, 2);
             return stand;
         }
 
-        private static void CreateFloor(Transform level, Color color, string tileName)
+        private static void CreateFloor(Transform level, string tileName, string spriteName)
         {
             string tilePath = $"{Root}/Art/Tilesets/{tileName}.asset";
             var tile = AssetDatabase.LoadAssetAtPath<Tile>(tilePath);
             if (tile == null)
             {
                 tile = ScriptableObject.CreateInstance<Tile>();
-                tile.color = color;
                 tile.colliderType = Tile.ColliderType.None;
                 AssetDatabase.CreateAsset(tile, tilePath);
             }
 
-            tile.sprite = PixelArt.Get("Top_Floor");
+            tile.color = Color.white;
+            tile.sprite = PixelArt.Get(spriteName);
             EditorUtility.SetDirty(tile);
 
             var gridObject = new GameObject("Grid");
@@ -312,7 +326,7 @@ namespace NightTrolleybus.EditorTools
             var size = new Vector2(xMax - xMin, yMax - yMin);
             var center = new Vector3(xMin + size.x / 2f, yMin + size.y / 2f, 0f);
 
-            GameObject wall = CreateTiled("Wall", level, center, "Top_Wall", size, Color.white, 0);
+            GameObject wall = CreateTiled("Wall", level, center, wallSprite, size, Color.white, 0);
             wall.AddComponent<BoxCollider2D>().size = size;
 
             // Тінь будується за формою спрайта, а плитка її не дає, тому тінь кидає окремий прозорий квадрат.
@@ -334,7 +348,6 @@ namespace NightTrolleybus.EditorTools
 
         private static GameObject CreatePlayer(Transform respawn)
         {
-            var noticeRaised = Channel<StringEventChannel>("BusNoticeRaised");
             var player = new GameObject("Player") { tag = "Player" };
             player.transform.position = respawn.position;
 
@@ -347,11 +360,14 @@ namespace NightTrolleybus.EditorTools
             SetBool(player.AddComponent<PlayerMotor2D>(), "topDown", true);
             AddInteractor(player);
             Wire(player.AddComponent<Health>(), ("healthChanged", Channel<FloatEventChannel>("PlayerHealthChanged")));
-            Wire(player.AddComponent<PlayerDeathHandler>(), ("respawnPoint", respawn), ("noticeRaised", noticeRaised));
+            Wire(player.AddComponent<PlayerDeathHandler>(), ("playerDied", Channel<VoidEventChannel>("PlayerDied")));
 
             CreatePlayerBody(player, "Top_");
-            GameObject swing = CreateArt("Swing", player.transform, Vector3.zero, "Swing", 6, Color.white, UnlitMaterial);
-            Wire(player.AddComponent<PlayerCombat>(), ("swingVisual", swing.GetComponent<SpriteRenderer>()));
+            GameObject swing = CreateArt("Swing", player.transform, Vector3.zero, "Effect_Slash", 7, Color.white, UnlitMaterial);
+            GameObject weapon = CreateArt("Weapon", player.transform, Vector3.zero, Bat.name, 6);
+            // Малюнки зброї довгі: у натуральну величину вона була б зростом із героя.
+            weapon.transform.localScale = Vector3.one * 0.7f;
+            Wire(player.AddComponent<PlayerCombat>(), ("swingVisual", swing.GetComponent<SpriteRenderer>()), ("weaponVisual", weapon.GetComponent<SpriteRenderer>()));
             return player;
         }
 
@@ -366,10 +382,34 @@ namespace NightTrolleybus.EditorTools
         {
             GameObject wall = CreateSprite("DarknessWall", null, new Vector3(92f, 0f, 0f), new Vector3(60f, 60f, 1f), Color.black, 50, UnlitMaterial);
             var darkness = new GameObject("Darkness").AddComponent<DarknessCreep>();
-            Wire(darkness, ("wall", wall.transform), ("player", player), ("enemyPrefab", enemyPrefab),
+            Wire(darkness, ("wall", wall.transform), ("player", player), ("enemyPrefab", enemyPrefab), ("rangedPrefab", GetOrCreateWraithPrefab()),
                 ("darknessChanged", Channel<FloatEventChannel>("DarknessChanged")));
             SetFloat(darkness, "slowSpawnInterval", slowSpawn);
             SetFloat(darkness, "fastSpawnInterval", fastSpawn);
+        }
+
+        private static GameObject GetOrCreateWraithPrefab()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(WraithPrefabPath);
+            if (existing != null)
+                return existing;
+
+            GameObject enemy = CreateArt("Wraith", null, Vector3.zero, "Top_Wraith_A", 4);
+            AddFrameLoop(enemy, 4f, "Top_Wraith_A", "Top_Wraith_B");
+            var body = enemy.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
+            body.freezeRotation = true;
+            enemy.AddComponent<CircleCollider2D>().radius = 0.5f;
+            enemy.AddComponent<Health>();
+
+            // Промінь не світиться сам: у темряві він зникає, тож джерело лишається невидимим.
+            var beam = CreateArt("Beam", enemy.transform, Vector3.zero, "Effect_WraithBeam", 6).GetComponent<SpriteRenderer>();
+            beam.drawMode = SpriteDrawMode.Tiled;
+            Wire(enemy.AddComponent<WraithBrain>(), ("beam", beam));
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(enemy, WraithPrefabPath);
+            Object.DestroyImmediate(enemy);
+            return prefab;
         }
 
         private static GameObject GetOrCreateEnemyPrefab()

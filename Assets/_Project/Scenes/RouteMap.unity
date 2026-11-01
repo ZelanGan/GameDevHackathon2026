@@ -316,6 +316,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NightTrolleybus.UI.RouteMapView
   root: {fileID: 1133290022}
   square: {fileID: 7482667652216324306, guid: a2d360d406865e64bbb56cde52f68354, type: 3}
+  nodeIcons:
+  - {fileID: 21300000, guid: b415022d544b0d246a3e5d8a567af15c, type: 3}
+  - {fileID: 21300000, guid: 59b63b46ec059bb4d9a47e3638ea61e8, type: 3}
+  - {fileID: 21300000, guid: e228ed41cfe3f5849ba9ff4de6034aab, type: 3}
+  - {fileID: 21300000, guid: 6c383c0c5dd6b744b9b81c97ce6e78bf, type: 3}
+  - {fileID: 21300000, guid: 5bfaef7d125a67942a5e2fa974be1ec9, type: 3}
+  - {fileID: 21300000, guid: b1f4683532544854ab0b9d136d2ee5c1, type: 3}
   font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
   layerSpacing: 280
   rowSpacing: 150
